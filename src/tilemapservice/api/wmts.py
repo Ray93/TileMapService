@@ -59,16 +59,36 @@ async def wmts_root(
 
     If no parameters provided, redirects to GetCapabilities.
     """
+    params = {key.lower(): value for key, value in request.query_params.items()}
+    service = service or params.get("service")
+    request_param = request_param or params.get("request")
+    version = version or params.get("version")
+    layer = layer or params.get("layer")
+    style = style or params.get("style")
+    tilematrixset = tilematrixset or params.get("tilematrixset")
+    format = format or params.get("format")
+    if tilematrix is None and params.get("tilematrix") is not None:
+        tilematrix = int(params["tilematrix"])
+    if tilerow is None and params.get("tilerow") is not None:
+        tilerow = int(params["tilerow"])
+    if tilecol is None and params.get("tilecol") is not None:
+        tilecol = int(params["tilecol"])
+
+    if service is not None:
+        service = service.upper()
+    if request_param is not None:
+        request_param = request_param.lower()
+
     # Default to GetCapabilities if service=WMTS without request
     if service == "WMTS" and request_param is None:
-        request_param = "GetCapabilities"
+        request_param = "getcapabilities"
 
     if service != "WMTS":
         return _error_response("InvalidParameterValue", f"Invalid service: {service}")
 
-    if request_param == "GetCapabilities":
+    if request_param == "getcapabilities":
         return await get_capabilities(request)
-    elif request_param == "GetTile":
+    elif request_param == "gettile":
         return await get_tile_kvp(
             request, layer, style, tilematrixset, tilematrix, tilerow, tilecol, format
         )

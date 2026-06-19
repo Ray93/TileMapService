@@ -141,6 +141,14 @@ def test_empty_value():
     assert cache.get("empty") == b""
 
 
+def test_max_size_smaller_than_num_shards_keeps_usable_shards():
+    """Shard size should never be zero."""
+    cache = ShardedTileCache(max_size=2, num_shards=16)
+    assert cache.shard_size == 1
+    cache.set("k1", b"v1")
+    assert cache.get("k1") == b"v1"
+
+
 def test_large_value():
     """Test storing large byte values."""
     cache = ShardedTileCache(max_size=1000, num_shards=4)

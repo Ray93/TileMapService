@@ -89,6 +89,17 @@ class TestGetCapabilities:
         assert response.headers["content-type"] == "application/xml"
         assert b"Capabilities" in response.content
 
+    def test_get_capabilities_accepts_uppercase_kvp_parameters(self):
+        """WMTS KVP parameters are case-insensitive in common clients."""
+        app = create_app(AppConfig())
+        app.state.wmts_capabilities = b"""<?xml version="1.0"?>
+<Capabilities xmlns="http://www.opengis.net/wmts/1.0">
+</Capabilities>"""
+        client = TestClient(app)
+        response = client.get("/wmts?SERVICE=wmts&REQUEST=getcapabilities")
+        assert response.status_code == 200
+        assert b"Capabilities" in response.content
+
 
 class TestGetTileKvp:
     """Tests for KVP GetTile endpoint."""
@@ -185,6 +196,20 @@ class TestGetTileKvp:
         assert response.status_code == 200
         assert response.headers["content-type"] == "image/png"
         assert b"PNG" in response.content
+
+    def test_get_tile_accepts_uppercase_kvp_parameters(self):
+        """Uppercase WMTS KVP parameters should reach tile service."""
+        app = create_app(AppConfig())
+        app.state.tile_service = OkTileService()
+        app.state.source_manager = MockSourceManager()
+        client = TestClient(app)
+        response = client.get(
+            "/wmts?SERVICE=WMTS&REQUEST=GetTile"
+            "&LAYER=test&TILEMATRIXSET=WebMercator"
+            "&TILEMATRIX=0&TILEROW=0&TILECOL=0"
+        )
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "image/png"
 
 
 class TestGetTileRestful:

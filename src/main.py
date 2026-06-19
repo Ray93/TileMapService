@@ -417,10 +417,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--host", type=str, default=None, help="服务主机地址")
     parser.add_argument("--port", type=int, default=None, help="服务端口")
     parser.add_argument("--config", type=str, default="config.yaml", help="配置文件路径")
-    parser.add_argument("--debug", action="store_true", help="调试模式")
+    parser.add_argument("--debug", action="store_true", default=None, help="调试模式")
     parser.add_argument("--daemon-internal", action="store_true", default=False, help=argparse.SUPPRESS)
     parser.add_argument("--cache-size", type=int, default=None, help="缓存最大瓦片数")
-    parser.add_argument("--cors", action="store_true", help="启用 CORS")
+    parser.add_argument("--cors", action="store_true", default=None, help="启用 CORS")
     parser.add_argument("--graceful-shutdown-timeout", type=int, default=None, help="优雅关闭等待秒数")
 
     # Process management commands (Windows only — Linux uses foreground run;
@@ -441,9 +441,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         start_parser.add_argument("--host", type=str, default=None, help="服务主机地址")
         start_parser.add_argument("--port", type=int, default=None, help="服务端口")
         start_parser.add_argument("--config", type=str, default="config.yaml", help="配置文件路径")
-        start_parser.add_argument("--debug", action="store_true", help="调试模式")
+        start_parser.add_argument("--debug", action="store_true", default=None, help="调试模式")
         start_parser.add_argument("--cache-size", type=int, default=None, help="缓存最大瓦片数")
-        start_parser.add_argument("--cors", action="store_true", help="启用 CORS")
+        start_parser.add_argument("--cors", action="store_true", default=None, help="启用 CORS")
         start_parser.add_argument("--graceful-shutdown-timeout", type=int, default=None, help="优雅关闭等待秒数")
 
         # restart command
@@ -451,9 +451,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         restart_parser.add_argument("--host", type=str, default=None, help="服务主机地址")
         restart_parser.add_argument("--port", type=int, default=None, help="服务端口")
         restart_parser.add_argument("--config", type=str, default="config.yaml", help="配置文件路径")
-        restart_parser.add_argument("--debug", action="store_true", help="调试模式")
+        restart_parser.add_argument("--debug", action="store_true", default=None, help="调试模式")
         restart_parser.add_argument("--cache-size", type=int, default=None, help="缓存最大瓦片数")
-        restart_parser.add_argument("--cors", action="store_true", help="启用 CORS")
+        restart_parser.add_argument("--cors", action="store_true", default=None, help="启用 CORS")
         restart_parser.add_argument("--graceful-shutdown-timeout", type=int, default=None, help="优雅关闭等待秒数")
 
     if sys.platform == 'linux':
@@ -698,8 +698,11 @@ def create_app(config: AppConfig) -> FastAPI:
             # Calculate path dynamically for each request (onefile/staticx
             # resolve to different base dirs; per-request lookup is robust)
             base_path = get_static_base_path()
-            libs_path = base_path / "static" / "libs"
-            full_path = libs_path / file_path
+            libs_path = (base_path / "static" / "libs").resolve()
+            full_path = (libs_path / file_path).resolve()
+
+            if not full_path.is_relative_to(libs_path):
+                return Response(status_code=404)
 
             if full_path.exists() and full_path.is_file():
                 # Read file manually instead of using FileResponse

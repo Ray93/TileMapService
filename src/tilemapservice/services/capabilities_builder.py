@@ -237,13 +237,14 @@ class CapabilitiesBuilder:
             # Calculate matrix size from resolution
             if tms.crs == "EPSG:3857":
                 world_size = 40075016.68557849
-                size = int(round(world_size / (res * tms.tile_width)))
+                matrix_width = int(round(world_size / (res * tms.tile_width)))
+                matrix_height = matrix_width
             elif tms.crs == "EPSG:4326":
-                width = int(round(360 / (res * tms.tile_width)))
-                height = int(round(180 / (res * tms.tile_height)))
-                size = width
+                matrix_width = int(round(360 / (res * tms.tile_width)))
+                matrix_height = int(round(180 / (res * tms.tile_height)))
             else:
-                size = 1 << z  # fallback
+                matrix_width = 1 << z  # fallback
+                matrix_height = matrix_width
 
             # Scale denominator: resolution * 0.28mm / pixel
             scale = res * 4000 / 0.28  # approximate
@@ -254,8 +255,8 @@ class CapabilitiesBuilder:
       <TopLeftCorner>{tms.origin_x} {tms.origin_y}</TopLeftCorner>
       <TileWidth>{tms.tile_width}</TileWidth>
       <TileHeight>{tms.tile_height}</TileHeight>
-      <MatrixWidth>{size}</MatrixWidth>
-      <MatrixHeight>{size}</MatrixHeight>
+      <MatrixWidth>{matrix_width}</MatrixWidth>
+      <MatrixHeight>{matrix_height}</MatrixHeight>
     </TileMatrix>""")
 
         if not matrices:

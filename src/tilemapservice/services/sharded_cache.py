@@ -1,4 +1,5 @@
 """Sharded TTL + LRU cache."""
+from math import ceil
 from threading import Lock
 from typing import Optional
 from cachetools import TTLCache
@@ -8,7 +9,7 @@ class ShardedTileCache:
         self.enabled = enabled
         self.num_shards = num_shards
         self.max_size = max_size
-        self.shard_size = max_size // num_shards
+        self.shard_size = max(1, ceil(max_size / num_shards))
         self._shards = [TTLCache(maxsize=self.shard_size, ttl=ttl) for _ in range(num_shards)] if enabled else []
         self._locks = [Lock() for _ in range(num_shards)] if enabled else []
 
