@@ -1,0 +1,36 @@
+.venv/
+__pycache__/
+.pytest-tmp/
+*.py[cod]
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.env
+
+# User configuration
+config/config.yaml
+
+sample-data/
+preview-debug*
+
+# Build artifacts
+TileMapService-*.zip
+TileMapService-*.tar.gz
+tilemapservice-*.zip
+dist-linux/
+dist-static/
+
+# Temporary files
+diagnose_*.py
+test_meipass.py
+debug_*.py
+quick-test.ps1
+verify-*.ps1
+monitor-*.ps1
+
+# Claude Code (local settings only)
+.claude/
+docs/superpowers/

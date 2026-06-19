@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+dist-linux/
+dist-static/
+build/
+*.egg
+.venv/
+venv/
+ENV/
+
+# PyInstaller
+*.spec
+*.manifest
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Build scripts (only needed for packaging, not for running)
+build-*.ps1
+build-*.sh
+Dockerfile.linux
+Dockerfile.staticx
+
+# Compiled executables
+TileMapService
+TileMapService.exe
+*.tar.gz
+*.zip
+
+# Logs
+*.log
+logs/
+
+# Sample data (mount as volume instead)
+sample-data/
+
+# Claude
+.claude/
+CLAUDE.md

@@ -1,0 +1,13 @@
+services:
+  tilemapservice:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      TILEMAPSERVICE_CONFIG: /app/config/config.yaml
+    volumes:
+      - ../config/config.yaml:/app/config/config.yaml:ro
+      - ../sample-data:/app/sample-data:ro
+

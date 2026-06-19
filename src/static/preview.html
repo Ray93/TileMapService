@@ -1,0 +1,1687 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TileMapService Preview</title>
+    <link rel="stylesheet" href="/libs/leaflet/leaflet.css" />
+    <style>
+      /* ═══════════════════════════════════════════════════════════════════════
+         TILEMAPSERVICE PREVIEW - CYBERPUNK HUD STYLE
+         Futuristic Interface with Neon Accents & Split-Screen Layout
+         ═══════════════════════════════════════════════════════════════════════ */
+
+      /* ─────────────────────────────────────────────────────────────────────
+         Theme Variables - Cyberpunk Dark/Light
+         ───────────────────────────────────────────────────────────────────── */
+      :root,
+      [data-theme="dark"] {
+        color-scheme: dark;
+
+        /* Core Colors */
+        --bg-primary: #0a0a0f;
+        --bg-secondary: #12121a;
+        --bg-tertiary: #1a1a25;
+        --bg-card: rgba(20, 20, 30, 0.6);
+
+        /* Neon Accent System */
+        --neon-cyan: #00ffff;
+        --neon-cyan-dim: rgba(0, 255, 255, 0.4);
+        --neon-cyan-bg: rgba(0, 255, 255, 0.08);
+        --neon-green: #22c55e;
+        --neon-green-dim: rgba(34, 197, 94, 0.4);
+        --neon-green-bg: rgba(34, 197, 94, 0.1);
+        --neon-magenta: #ff00ff;
+        --neon-magenta-dim: rgba(255, 0, 255, 0.3);
+        --neon-amber: #f59e0b;
+        --neon-amber-dim: rgba(245, 158, 11, 0.4);
+
+        /* Text System */
+        --text-primary: #f0f0f5;
+        --text-secondary: #a0a0b0;
+        --text-muted: #606070;
+        --text-inverse: #0a0a0f;
+
+        /* UI Elements */
+        --border-neon: rgba(0, 255, 255, 0.3);
+        --border-subtle: rgba(255, 255, 255, 0.05);
+        --border-card: rgba(0, 255, 255, 0.15);
+
+        /* Glow Effects */
+        --glow-cyan: 0 0 20px rgba(0, 255, 255, 0.5), 0 0 40px rgba(0, 255, 255, 0.2);
+        --glow-green: 0 0 15px rgba(34, 197, 94, 0.5), 0 0 30px rgba(34, 197, 94, 0.2);
+        --glow-subtle: 0 0 10px rgba(0, 255, 255, 0.3);
+
+        /* Shadows */
+        --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(0, 255, 255, 0.1);
+        --shadow-panel: 0 8px 32px rgba(0, 0, 0, 0.4);
+
+        /* Z-Scale */
+        --z-tiles: 10;
+        --z-hud: 20;
+        --z-panel: 30;
+        --z-overlay: 50;
+      }
+
+      [data-theme="light"] {
+        color-scheme: light;
+
+        /* Core Colors */
+        --bg-primary: #f5f5f7;
+        --bg-secondary: #e8e8ec;
+        --bg-tertiary: #ffffff;
+        --bg-card: rgba(255, 255, 255, 0.9);
+
+        /* Accent System (No Neon in Light) */
+        --neon-cyan: #0080ff;
+        --neon-cyan-dim: rgba(0, 128, 255, 0.6);
+        --neon-cyan-bg: rgba(0, 128, 255, 0.08);
+        --neon-green: #22c55e;
+        --neon-green-dim: rgba(34, 197, 94, 0.6);
+        --neon-green-bg: rgba(34, 197, 94, 0.1);
+        --neon-magenta: #9333ea;
+        --neon-magenta-dim: rgba(147, 51, 234, 0.5);
+        --neon-amber: #f59e0b;
+        --neon-amber-dim: rgba(245, 158, 11, 0.6);
+
+        /* Text System */
+        --text-primary: #0a0a0f;
+        --text-secondary: #404050;
+        --text-muted: #707080;
+        --text-inverse: #f5f5f7;
+
+        /* UI Elements */
+        --border-neon: rgba(0, 128, 255, 0.3);
+        --border-subtle: rgba(0, 0, 0, 0.05);
+        --border-card: rgba(0, 128, 255, 0.15);
+
+        /* Glow Effects (Subtle) */
+        --glow-cyan: 0 2px 8px rgba(0, 128, 255, 0.2);
+        --glow-green: 0 2px 8px rgba(34, 197, 94, 0.2);
+        --glow-subtle: 0 1px 4px rgba(0, 128, 255, 0.1);
+
+        /* Shadows */
+        --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.08);
+        --shadow-panel: 0 4px 20px rgba(0, 0, 0, 0.1);
+      }
+
+      /* ─────────────────────────────────────────────────────────────────────
+         Base Configuration
+         ───────────────────────────────────────────────────────────────────── */
+      :root {
+        --font-mono: "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        --font-sans: "Fira Sans", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+
+        --transition-fast: 150ms ease-out;
+        --transition-base: 200ms ease-out;
+        --transition-slow: 300ms ease-out;
+
+        --radius-sm: 6px;
+        --radius-md: 8px;
+        --radius-lg: 12px;
+        --radius-xl: 16px;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        :root {
+          --transition-fast: 0ms;
+          --transition-base: 0ms;
+          --transition-slow: 0ms;
+        }
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+
+      /* ─────────────────────────────────────────────────────────────────────
+         Reset & Base
+         ───────────────────────────────────────────────────────────────────── */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        font-size: 16px;
+      }
+
+      body {
+        min-height: 100vh;
+        font-family: var(--font-sans);
+        font-size: 14px;
+        line-height: 1.6;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        transition: background-color var(--transition-slow), color var(--transition-slow);
+        overflow-x: hidden;
+      }
+
+      body.map-view-active {
+        overflow: hidden;
+      }
+
+      /* ─────────────────────────────────────────────────────────────────────
+         HUD Corner Brackets (Decorative Tech Markers)
+         ───────────────────────────────────────────────────────────────────── */
+      .hud-frame {
+        position: relative;
+      }
+
+      .hud-frame::before,
+      .hud-frame::after,
+      .hud-frame .hud-corner-top::before,
+      .hud-frame .hud-corner-top::after,
+      .hud-frame .hud-corner-bottom::before,
+      .hud-frame .hud-corner-bottom::after {
+        content: "";
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border: 2px solid var(--neon-cyan);
+        transition: border-color var(--transition-base);
+      }
+
+      .hud-frame::before {
+        top: 0;
+        left: 0;
+        border-right: none;
+        border-bottom: none;
+      }
+
+      .hud-frame::after {
+        top: 0;
+        right: 0;
+        border-left: none;
+        border-bottom: none;
+      }
+
+      .hud-frame .hud-corner-bottom::before {
+        bottom: 0;
+        left: 0;
+        border-right: none;
+        border-top: none;
+      }
+
+      .hud-frame .hud-corner-bottom::after {
+        bottom: 0;
+        right: 0;
+        border-left: none;
+        border-top: none;
+      }
+
+      /* Glow variant */
+      .hud-frame.glow::before,
+      .hud-frame.glow::after {
+        box-shadow: var(--glow-subtle);
+      }
+
+      /* ─────────────────────────────────────────────────────────────────────
+         Split-Screen Layout (New Structure)
+         ───────────────────────────────────────────────────────────────────── */
+      .split-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        min-height: 100vh;
+        gap: 1px;
+        background: var(--border-neon);
+      }
+
+      .split-left,
+      .split-right {
+        background: var(--bg-primary);
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Home View - Full Width */
+      .home-layout {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+
+      /* Map View - Split Screen */
+      .map-layout {
+        display: grid;
+        grid-template-columns: 1fr 500px;
+        min-height: 100vh;
+        gap: 0;
+      }
+
+      .map-viewport {
+        position: relative;
+        height: 100%;
+        background: var(--bg-secondary);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .data-panel {
+        background: var(--bg-tertiary);
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+      }
+
+      /* ─────────────────────────────────────────────────────────────────────
+         HUD Header (Minimal Tech Style)
+         ───────────────────────────────────────────────────────────────────── */
+      .hud-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 20px;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-neon);
+      }
+
+      .hud-logo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .hud-logo-icon {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--neon-cyan);
+        border-radius: var(--radius-sm);
+        position: relative;
+      }
+
+      [data-theme="dark"] .hud-logo-icon {
+        box-shadow: var(--glow-subtle);
+      }
+
+      .hud-logo-icon svg {
+        width: 18px;
+        height: 18px;
+        stroke: var(--neon-cyan);
+        fill: none;
+        stroke-width: 2;
+      }
+
+      .hud-logo-text {
+        font-family: var(--font-mono);
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+        letter-spacing: 0.05em;
+      }
+
+      [data-theme="dark"] .hud-logo-text {
+        text-shadow: 0 0 10px var(--neon-cyan-dim);
+      }
+
+      .hud-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .hud-status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--neon-green);
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      [data-theme="dark"] .hud-status-dot {
+        box-shadow: 0 0 8px var(--neon-green-dim);
+      }
+
+      .hud-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      /* ─────────────────────────────────────────────────────────────────────
+         HUD Buttons
+         ───────────────────────────────────────────────────────────────────── */
+      .hud-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-height: 32px;
+        padding: 6px 12px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        border: 1px solid var(--border-card);
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+        text-decoration: none;
+      }
+
+      .hud-btn:hover {
+        border-color: var(--neon-cyan);
+        color: var(--neon-cyan);
+        background: var(--neon-cyan-bg);
+      }
+
+      [data-theme="dark"] .hud-btn:hover {
+        box-shadow: var(--glow-subtle);
+      }
+
+      .hud-btn:focus-visible {
+        outline: 2px solid var(--neon-cyan);
+        outline-offset: 2px;
+      }
+
+      .hud-btn svg {
+        width: 14px;
+        height: 14px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+      }
+
+      /* Primary Action Button */
+      .hud-btn-primary {
+        border-color: var(--neon-green);
+        color: var(--neon-green);
+        background: var(--neon-green-bg);
+      }
+
+      .hud-btn-primary:hover {
+        border-color: var(--neon-green);
+        color: var(--neon-green);
+        background: rgba(34, 197, 94, 0.2);
+      }
+
+      [data-theme="dark"] .hud-btn-primary {
+        box-shadow: var(--glow-green);
+      }
+
+      /* Icon Only Button */
+      .hud-btn-icon {
+        width: 32px;
+        padding: 0;
+      }
+
+      /* ─────────────────────────────────────────────────────────────────────
+         Source Grid (Masonry-style Layout)
+         ───────────────────────────────────────────────────────────────────── */
+      .source-section {
+        flex: 1;
+        padding: 24px;
+        overflow-y: auto;
+      }
+
+      .source-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+      }
+
+      /* ─────────────────────────────────────────────────────────────────────
+         Source Card (HUD Style)
+         ───────────────────────────────────────────────────────────────────── */
+      .source-card {
+        position: relative;
+        padding: 20px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-card);
+        border-radius: var(--radius-lg);
+        transition: all var(--transition-base);
+        cursor: pointer;
+      }
+
+      .source-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 8px;
+        width: 40px;
+        height: 2px;
+        background: var(--neon-cyan);
+        transition: width var(--transition-base);
+      }
+
+      [data-theme="dark"] .source-card::before {
+        box-shadow: var(--glow-subtle);
+      }
+
+      .source-card:hover {
+        border-color: var(--neon-cyan);
+        transform: translateY(-2px);
+        background: rgba(0, 255, 255, 0.05);
+      }
+
+      [data-theme="dark"] .source-card:hover {
+        box-shadow: var(--shadow-card), var(--glow-subtle);
+      }
+
+      .source-card:hover::before {
+        width: 60px;
+      }
+
+      .source-card:focus-within {
+        outline: 2px solid var(--neon-cyan);
+        outline-offset: 2px;
+      }
+
+      .card-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .card-icon {
+        width: 24px;
+        height: 24px;
+        border: 1px solid var(--neon-cyan-dim);
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .card-icon svg {
+        width: 14px;
+        height: 14px;
+        stroke: var(--neon-cyan);
+        fill: none;
+        stroke-width: 2;
+      }
+
+      .card-title {
+        font-family: var(--font-mono);
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-primary);
+        letter-spacing: 0.02em;
+      }
+
+      .card-desc {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-bottom: 16px;
+        line-height: 1.5;
+      }
+
+      .card-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .meta-item {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .meta-label {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-muted);
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .meta-value {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--neon-cyan);
+      }
+
+      [data-theme="dark"] .meta-value {
+        text-shadow: 0 0 8px var(--neon-cyan-dim);
+      }
+
+      .card-action {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      /* ─────────────────────────────────────────────────────────────────────
+         Map Viewport (Left Side)
+         ───────────────────────────────────────────────────────────────────── */
+      .map-container {
+        position: relative;
+        flex: 1;
+        background: var(--bg-secondary);
+      }
+
+      #map-canvas {
+        position: absolute;
+        inset: 0;
+        z-index: var(--z-tiles);
+      }
+
+      /* Map HUD Overlay */
+      .map-hud-overlay {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: var(--z-hud);
+      }
+
+      .map-hud-overlay > * {
+        pointer-events: auto;
+      }
+
+      /* Top HUD Bar */
+      .map-hud-top {
+        position: absolute;
+        top: 10px;
+        left: 52px;
+        right: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .hud-panel {
+        padding: 10px 14px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-card);
+        border-radius: var(--radius-md);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      [data-theme="dark"] .hud-panel {
+        box-shadow: var(--shadow-card);
+      }
+
+      .hud-panel-value {
+        color: var(--neon-cyan);
+        font-weight: 600;
+      }
+
+      [data-theme="dark"] .hud-panel-value {
+        text-shadow: 0 0 8px var(--neon-cyan-dim);
+      }
+
+      /* Bottom HUD Bar */
+      .map-hud-bottom {
+        position: absolute;
+        bottom: 16px;
+        left: 16px;
+      }
+
+      /* ─────────────────────────────────────────────────────────────────────
+         Data Panel (Right Side)
+         ───────────────────────────────────────────────────────────────────── */
+      .panel-header {
+        padding: 20px;
+        border-bottom: 1px solid var(--border-neon);
+      }
+
+      .panel-title {
+        font-family: var(--font-mono);
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--neon-cyan);
+        margin-bottom: 4px;
+        letter-spacing: 0.02em;
+      }
+
+      [data-theme="dark"] .panel-title {
+        text-shadow: 0 0 12px var(--neon-cyan-dim);
+      }
+
+      .panel-desc {
+        font-size: 13px;
+        color: var(--text-muted);
+      }
+
+      .panel-body {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+      }
+
+      /* Control Section */
+      .control-section {
+        margin-bottom: 24px;
+      }
+
+      .control-label {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-muted);
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        display: block;
+      }
+
+      .control-input {
+        width: 100%;
+        padding: 12px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-card);
+        border-radius: var(--radius-md);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--text-primary);
+        transition: border-color var(--transition-fast);
+      }
+
+      .control-input:hover {
+        border-color: var(--border-neon);
+      }
+
+      .control-input:focus {
+        outline: none;
+        border-color: var(--neon-cyan);
+        box-shadow: 0 0 0 2px var(--neon-cyan-bg);
+      }
+
+      select.control-input {
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2300ffff' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 36px;
+      }
+
+      textarea.control-input {
+        min-height: 80px;
+        resize: vertical;
+        line-height: 1.5;
+      }
+
+      .control-note {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 8px;
+        line-height: 1.4;
+      }
+
+      /* Action Buttons Row */
+      .action-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .action-row .hud-btn {
+        flex: 1;
+      }
+
+      /* Data Display Grid */
+      .data-grid {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 12px 16px;
+        margin-top: 20px;
+      }
+
+      .data-key {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-muted);
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .data-value {
+        font-family: var(--font-mono);
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      .data-value.highlight {
+        color: var(--neon-cyan);
+      }
+
+      [data-theme="dark"] .data-value.highlight {
+        text-shadow: 0 0 8px var(--neon-cyan-dim);
+      }
+
+      .data-value code {
+        display: block;
+        white-space: pre-wrap;
+        word-break: break-all;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        padding: 8px;
+        font-size: 11px;
+        margin-top: 4px;
+      }
+
+      /* Legend */
+      .legend-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 20px;
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .legend-line {
+        width: 30px;
+        height: 0;
+        border-top: 2px dashed var(--neon-cyan);
+      }
+
+      /* ─────────────────────────────────────────────────────────────────────
+         Leaflet Overrides (HUD Style)
+         ───────────────────────────────────────────────────────────────────── */
+      .leaflet-container {
+        width: 100%;
+        height: 100%;
+        background: var(--bg-secondary);
+        font-family: var(--font-sans);
+        position: absolute;
+        inset: 0;
+      }
+
+      .leaflet-control-attribution {
+        background: var(--bg-card) !important;
+        color: var(--text-muted) !important;
+        font-size: 10px !important;
+        padding: 4px 8px !important;
+        border: 1px solid var(--border-card) !important;
+        border-radius: var(--radius-sm) !important;
+      }
+
+      .leaflet-control-attribution a {
+        color: var(--neon-cyan) !important;
+      }
+
+      .leaflet-control-zoom {
+        border: 1px solid var(--border-card) !important;
+        border-radius: var(--radius-md) !important;
+        background: var(--bg-card) !important;
+        box-shadow: var(--shadow-card) !important;
+      }
+
+      .leaflet-control-zoom a {
+        background: transparent !important;
+        color: var(--neon-cyan) !important;
+        border-color: var(--border-card) !important;
+        width: 34px !important;
+        height: 34px !important;
+        line-height: 34px !important;
+        font-size: 18px !important;
+        font-weight: 400 !important;
+        font-family: Arial, sans-serif !important;
+        transition: all var(--transition-fast) !important;
+      }
+
+      .leaflet-control-zoom a:hover {
+        background: var(--neon-cyan-bg) !important;
+        color: var(--neon-cyan) !important;
+      }
+
+      .leaflet-control-zoom-in {
+        border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
+      }
+
+      .leaflet-control-zoom-out {
+        border-radius: 0 0 var(--radius-md) var(--radius-md) !important;
+      }
+
+      .leaflet-tile {
+        image-rendering: auto;
+      }
+
+      /* ─────────────────────────────────────────────────────────────────────
+         Status & Loading
+         ───────────────────────────────────────────────────────────────────── */
+      .status-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 20px;
+        background: var(--bg-tertiary);
+        border-bottom: 1px solid var(--border-neon);
+      }
+
+      .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+
+      .status-indicator::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--neon-green);
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      [data-theme="dark"] .status-indicator::before {
+        box-shadow: 0 0 10px var(--neon-green-dim);
+      }
+
+      .status-indicator.loading::before {
+        width: 14px;
+        height: 14px;
+        border: 2px solid var(--border-card);
+        border-top-color: var(--neon-cyan);
+        background: transparent;
+        animation: spin 1s linear infinite;
+      }
+
+      .status-indicator.error::before {
+        background: var(--neon-magenta);
+        animation: none;
+      }
+
+      [data-theme="dark"] .status-indicator.error::before {
+        box-shadow: 0 0 10px var(--neon-magenta-dim);
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      /* ─────────────────────────────────────────────────────────────────────
+         Utility
+         ───────────────────────────────────────────────────────────────────── */
+      .hidden {
+        display: none !important;
+      }
+
+      /* ─────────────────────────────────────────────────────────────────────
+         Responsive
+         ───────────────────────────────────────────────────────────────────── */
+      @media (max-width: 1024px) {
+        .map-layout {
+          grid-template-columns: 60% 40%;
+        }
+      }
+
+      @media (max-width: 900px) {
+        body.map-view-active {
+          overflow-y: auto;
+        }
+
+        .map-layout {
+          grid-template-columns: 1fr;
+          grid-template-rows: minmax(50vh, 60vh) auto;
+        }
+
+        .map-viewport {
+          min-height: 50vh;
+        }
+
+        .data-panel {
+          min-height: auto;
+        }
+
+        .map-hud-top,
+        .map-hud-bottom {
+          left: 52px;
+          right: 12px;
+        }
+
+        .source-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .hud-header {
+          padding: 10px 16px;
+        }
+
+        .source-section {
+          padding: 16px;
+        }
+
+        .panel-header,
+        .panel-body {
+          padding: 16px;
+        }
+
+        .hud-btn {
+          min-height: 36px;
+          padding: 8px 12px;
+        }
+
+        .hud-btn-icon {
+          width: 36px;
+        }
+      }
+    </style>
+  </head>
+  <body data-theme="dark">
+    <!-- Home View -->
+    <div id="home-view" class="home-layout">
+      <!-- HUD Header -->
+      <header class="hud-header">
+        <div class="hud-logo">
+          <div class="hud-logo-icon">
+            <svg viewBox="0 0 24 24">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <line x1="9" y1="3" x2="9" y2="21"/>
+              <line x1="15" y1="9" x2="21" y2="9"/>
+              <line x1="3" y1="15" x2="9" y2="15"/>
+            </svg>
+          </div>
+          <span class="hud-logo-text">TILEMAPSERVICE</span>
+        </div>
+        <div class="hud-controls">
+          <button id="theme-toggle" class="hud-btn hud-btn-icon" type="button" aria-label="切换主题">
+            <svg class="sun-icon" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="5"/>
+              <line x1="12" y1="1" x2="12" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/>
+              <line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+            <svg class="moon-icon" viewBox="0 0 24 24" style="display:none;">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          </button>
+          <a class="hud-btn" href="/redoc" target="_blank">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            API
+          </a>
+          <a class="hud-btn" href="/health">
+            <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            HEALTH
+          </a>
+          <a class="hud-btn" href="/wmts?service=WMTS&request=GetCapabilities">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+            WMTS
+          </a>
+        </div>
+      </header>
+
+      <!-- Status Bar -->
+      <div class="status-bar">
+        <div id="home-status" class="status-indicator loading">正在扫描数据源...</div>
+      </div>
+
+      <!-- Source Section -->
+      <section class="source-section">
+        <div id="source-list" class="source-grid" aria-live="polite"></div>
+      </section>
+    </div>
+
+    <!-- Map View -->
+    <div id="map-view" class="hidden map-layout">
+      <!-- Map Viewport (Left) -->
+      <div class="map-viewport hud-frame">
+        <div class="hud-corner-bottom"></div>
+
+        <!-- HUD Header -->
+        <header class="hud-header">
+          <div class="hud-logo">
+            <div class="hud-logo-icon">
+              <svg viewBox="0 0 24 24">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <line x1="9" y1="3" x2="9" y2="21"/>
+                <line x1="15" y1="9" x2="21" y2="9"/>
+                <line x1="3" y1="15" x2="9" y2="15"/>
+              </svg>
+            </div>
+            <span class="hud-logo-text">地图视图</span>
+          </div>
+          <div class="hud-controls">
+            <button id="theme-toggle-map" class="hud-btn hud-btn-icon" type="button" aria-label="切换主题">
+              <svg class="sun-icon" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="5"/>
+                <line x1="12" y1="1" x2="12" y2="3"/>
+                <line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1" y1="12" x2="3" y2="12"/>
+                <line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+              </svg>
+              <svg class="moon-icon" viewBox="0 0 24 24" style="display:none;">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+              </svg>
+            </button>
+            <a id="back-link" class="hud-btn" href="/preview">
+              <svg viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                返回
+              </a>
+            <a class="hud-btn" href="/wmts?service=WMTS&request=GetCapabilities">
+              <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+              WMTS
+            </a>
+          </div>
+        </header>
+
+        <!-- Map Container -->
+        <div class="map-container">
+          <div id="map-canvas"></div>
+
+          <!-- HUD Overlay -->
+          <div class="map-hud-overlay">
+            <div class="map-hud-top">
+              <div class="hud-panel">
+                <span>ZOOM</span>
+                <span id="current-zoom-display" class="hud-panel-value">-</span>
+              </div>
+              <button id="fit-bounds" class="hud-btn hud-btn-primary" type="button">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="3" cy="3" r="2"/><circle cx="21" cy="3" r="2"/><circle cx="21" cy="21" r="2"/><circle cx="3" cy="21" r="2"/></svg>
+                自适应边界
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Panel (Right) -->
+      <div class="data-panel">
+        <div class="panel-header">
+          <h2 id="panel-title" class="panel-title">-</h2>
+          <p id="panel-desc" class="panel-desc">-</p>
+        </div>
+
+        <div class="panel-body">
+          <!-- Address Mode -->
+          <div class="control-section">
+            <label class="control-label">ADDRESS MODE</label>
+            <select id="address-mode" class="control-input" aria-label="瓦片地址模式"></select>
+            <p id="address-mode-note" class="control-note">-</p>
+          </div>
+
+          <!-- URL Template -->
+          <div class="control-section">
+            <label class="control-label">URL TEMPLATE</label>
+            <textarea id="current-url-template" class="control-input" readonly></textarea>
+            <div class="action-row">
+              <button id="copy-current-url" class="hud-btn" type="button">
+                <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                COPY
+              </button>
+              <button id="open-current-url" class="hud-btn" type="button">
+                <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                OPEN
+              </button>
+            </div>
+          </div>
+
+          <!-- Data Display -->
+          <div id="map-info"></div>
+
+          <!-- Legend -->
+          <div class="legend-row">
+            <span class="legend-line"></span>
+            <span>数据边界区域 (虚线矩形)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/libs/leaflet/leaflet.js"></script>
+    <script>
+      // ═══════════════════════════════════════════════════════════════════════
+      // Theme Management
+      // ═══════════════════════════════════════════════════════════════════════
+      const THEME_KEY = "tilemapservice-theme";
+
+      function getPreferredTheme() {
+        const stored = localStorage.getItem(THEME_KEY);
+        if (stored === "light" || stored === "dark") return stored;
+        return "dark"; // Always default to dark for HUD style
+      }
+
+      function setTheme(theme) {
+        document.body.setAttribute("data-theme", theme);
+        localStorage.setItem(THEME_KEY, theme);
+        updateThemeIcons(theme);
+      }
+
+      function toggleTheme() {
+        const current = document.body.getAttribute("data-theme") || "dark";
+        setTheme(current === "dark" ? "light" : "dark");
+      }
+
+      function updateThemeIcons(theme) {
+        const sunIcons = document.querySelectorAll('.sun-icon');
+        const moonIcons = document.querySelectorAll('.moon-icon');
+        sunIcons.forEach(icon => icon.style.display = theme === "light" ? "block" : "none");
+        moonIcons.forEach(icon => icon.style.display = theme === "dark" ? "block" : "none");
+      }
+
+      // Initialize theme
+      setTheme(getPreferredTheme());
+
+      // Theme toggle buttons
+      document.getElementById("theme-toggle")?.addEventListener("click", toggleTheme);
+      document.getElementById("theme-toggle-map")?.addEventListener("click", toggleTheme);
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // Application State
+      // ═══════════════════════════════════════════════════════════════════════
+      const state = {
+        source: null,
+        epsg: 3857,
+        zoom: 0,
+        availableZooms: [],
+        map: null,
+        tileLayer: null,
+        boundsLayer: null,
+        dataBounds: null,
+        addressModes: [],
+        addressMode: null,
+      };
+
+      // DOM References
+      const homeView = document.getElementById("home-view");
+      const mapView = document.getElementById("map-view");
+      const sourceList = document.getElementById("source-list");
+      const homeStatus = document.getElementById("home-status");
+      const panelTitle = document.getElementById("panel-title");
+      const panelDesc = document.getElementById("panel-desc");
+      const mapInfo = document.getElementById("map-info");
+      const addressModeSelect = document.getElementById("address-mode");
+      const addressModeNote = document.getElementById("address-mode-note");
+      const currentUrlTemplate = document.getElementById("current-url-template");
+      const zoomDisplay = document.getElementById("current-zoom-display");
+
+      // Event Bindings
+      document.getElementById("fit-bounds").addEventListener("click", () => {
+        if (state.source) fitLeafletMapToSourceBounds(state.source);
+      });
+
+      addressModeSelect.addEventListener("change", (e) => switchAddressMode(e.target.value));
+      document.getElementById("copy-current-url").addEventListener("click", copyCurrentUrl);
+      document.getElementById("open-current-url").addEventListener("click", openCurrentUrlExample);
+
+      // Boot
+      boot();
+
+      async function boot() {
+        const sourceName = getSourceNameFromPath();
+        if (sourceName) {
+          await renderMapPreview(sourceName);
+        } else {
+          await renderSourceCards();
+        }
+      }
+
+      function getSourceNameFromPath() {
+        const match = window.location.pathname.match(/^\/preview\/(.+)$/);
+        return match ? decodeURIComponent(match[1]) : "";
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // Home View: Source Cards
+      // ═══════════════════════════════════════════════════════════════════════
+      async function renderSourceCards() {
+        homeView.classList.remove("hidden");
+        mapView.classList.add("hidden");
+        sourceList.innerHTML = "";
+        homeStatus.className = "status-indicator loading";
+        homeStatus.textContent = "正在扫描数据源...";
+
+        try {
+          const response = await fetch("/api/sources");
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const data = await response.json();
+          const sources = data.sources || [];
+
+          homeStatus.className = "status-indicator";
+          homeStatus.textContent = sources.length
+            ? `已定位 ${sources.length} 个数据源`
+            : "无数据源";
+
+          sourceList.innerHTML = sources.map(source => `
+            <article class="source-card">
+              <div class="card-header">
+                <div class="card-icon">
+                  <svg viewBox="0 0 24 24">
+                    <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+                    <line x1="8" y1="2" x2="8" y2="18"/>
+                    <line x1="16" y1="6" x2="16" y2="22"/>
+                  </svg>
+                </div>
+                <h2 class="card-title">${escapeHtml(source.name)}</h2>
+              </div>
+              <p class="card-desc">${escapeHtml(source.description || "无描述")}</p>
+              <div class="card-meta">
+                <div class="meta-item">
+                  <span class="meta-label">SRS</span>
+                  <span class="meta-value">${escapeHtml(source.srs || "-")}</span>
+                </div>
+                <div class="meta-item">
+                  <span class="meta-label">ZOOM</span>
+                  <span class="meta-value">${source.min_zoom}-${source.max_zoom}</span>
+                </div>
+                <div class="meta-item">
+                  <span class="meta-label">BBOX</span>
+                  <span class="meta-value">${formatBounds(source.bounds)}</span>
+                </div>
+              </div>
+              <div class="card-action">
+                <a class="hud-btn hud-btn-primary" href="/preview/${encodeURIComponent(source.name)}">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+                  地图预览
+                </a>
+              </div>
+            </article>
+          `).join("");
+        } catch (error) {
+          homeStatus.className = "status-indicator error";
+          homeStatus.textContent = `扫描失败: ${error.message}`;
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // Map Preview
+      // ═══════════════════════════════════════════════════════════════════════
+      async function renderMapPreview(sourceName) {
+        homeView.classList.add("hidden");
+        mapView.classList.remove("hidden");
+        document.body.classList.add("map-view-active");
+        panelTitle.textContent = "正在加载...";
+        panelDesc.textContent = "初始化地图引擎";
+
+        try {
+          if (typeof L === "undefined") {
+            throw new Error("Leaflet 未加载");
+          }
+
+          const response = await fetch(`/api/sources/${encodeURIComponent(sourceName)}`);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const source = await response.json();
+
+          state.source = source;
+          state.epsg = getEpsg(source);
+          state.availableZooms = getAvailableZooms(source);
+          state.zoom = chooseInitialZoom(source);
+          state.addressModes = buildAddressModes(source);
+          state.addressMode = state.addressModes[0];
+
+          renderAddressModeOptions();
+          state.dataBounds = boundsToLeafletLatLngBounds(source, state.addressMode);
+          renderPanelInfo(source);
+          initializeLeafletMap(source);
+          fitLeafletMapToSourceBounds(source);
+        } catch (error) {
+          panelTitle.textContent = "加载失败";
+          panelDesc.textContent = error.message;
+        }
+      }
+
+      function initializeLeafletMap(source) {
+        if (state.map) {
+          state.map.remove();
+          state.map = null;
+          state.tileLayer = null;
+          state.boundsLayer = null;
+        }
+
+        const mode = state.addressMode || buildAddressModes(source)[0];
+        const epsg = mode.epsg;
+        const crs = mode.crs === "EPSG:4326" ? L.CRS.EPSG4326 : L.CRS.EPSG3857;
+
+        state.map = L.map("map-canvas", {
+          crs,
+          minZoom: mode.minZoom,
+          maxZoom: mode.maxZoom,
+          zoomControl: true,
+          attributionControl: true,
+          worldCopyJump: false,
+        });
+
+        const tileSize = source.tile_info?.tile_size || 256;
+
+        state.tileLayer = L.tileLayer(mode.url, {
+          minZoom: mode.minZoom,
+          maxZoom: mode.maxZoom,
+          minNativeZoom: mode.minZoom,
+          maxNativeZoom: mode.maxZoom,
+          tileSize,
+          noWrap: true,
+          tms: mode.tms,
+          bounds: state.dataBounds,
+          attribution: "TMS",
+          errorTileUrl: "",
+        }).addTo(state.map);
+
+        const boundsColor = "#00ffff";
+        state.boundsLayer = L.rectangle(state.dataBounds, {
+          color: boundsColor,
+          weight: 2,
+          opacity: 1,
+          fillColor: boundsColor,
+          fillOpacity: 0.05,
+          dashArray: "8 6",
+          interactive: false,
+        }).addTo(state.map);
+
+        state.map.on("zoomend", function () {
+          const z = state.map.getZoom();
+          if (zoomDisplay) zoomDisplay.textContent = z;
+          state.zoom = z;
+        });
+      }
+
+      function fitLeafletMapToSourceBounds(source) {
+        if (!state.map || !state.dataBounds) return;
+        state.map.fitBounds(state.dataBounds, {
+          padding: [32, 32],
+          maxZoom: chooseInitialZoom(source),
+        });
+        if (zoomDisplay) zoomDisplay.textContent = state.map.getZoom();
+      }
+
+      function boundsToLeafletLatLngBounds(source, mode = state.addressMode) {
+        const bounds = normalizeBounds(source.bounds);
+        const epsg = getEpsg(source);
+
+        if (epsg === 3857 && !looksLikeLonLat(bounds)) {
+          const southWest = L.CRS.EPSG3857.unproject(L.point(bounds[0], bounds[1]));
+          const northEast = L.CRS.EPSG3857.unproject(L.point(bounds[2], bounds[3]));
+          return L.latLngBounds(southWest, northEast);
+        }
+
+        return L.latLngBounds([bounds[1], bounds[0]], [bounds[3], bounds[2]]);
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // Address Modes
+      // ═══════════════════════════════════════════════════════════════════════
+      function buildAddressModes(source) {
+        const epsg = getEpsg(source);
+        const encName = encodeURIComponent(source.name);
+        const sourceTemplate = `/tiles/${encName}/crs/epsg:${epsg}/{z}/{x}/{y}?matrix=source`;
+
+        // WMTS URL templates
+        const wmtsKvpBase = `/wmts?service=WMTS&request=GetTile&layer=${encName}&tilematrixset=`;
+        const wmtsRestBase = `/wmts/${encName}/default/`;
+
+        return [
+          {
+            id: "source",
+            label: "SOURCE MATRIX",
+            note: "原生 CRS 与 Tile Matrix，适合排查原始排列",
+            crs: epsg === 4326 ? "EPSG:4326" : "EPSG:3857",
+            epsg,
+            url: sourceTemplate,
+            sampleUrl: sourceTemplate.replace("{z}", String(source.min_zoom)).replace("{x}", "0").replace("{y}", "0"),
+            minZoom: source.min_zoom,
+            maxZoom: source.max_zoom,
+            tms: false,
+          },
+          {
+            id: "webmercator-xyz",
+            label: "WEBXYZ",
+            note: "标准 WebMercator XYZ 地址格式",
+            crs: "EPSG:3857",
+            epsg: 3857,
+            url: `/tiles/${encName}/{z}/{x}/{y}.png`,
+            sampleUrl: `/tiles/${encName}/0/0/0.png`,
+            minZoom: 0,
+            maxZoom: source.max_zoom,
+            tms: false,
+          },
+          {
+            id: "webmercator-tms",
+            label: "WEBTMS",
+            note: "TMS 格式 (y 轴翻转)",
+            crs: "EPSG:3857",
+            epsg: 3857,
+            url: `/tiles/${encName}/tms/{z}/{x}/{y}.png`,
+            sampleUrl: `/tiles/${encName}/tms/0/0/0.png`,
+            minZoom: 0,
+            maxZoom: source.max_zoom,
+            tms: true,
+          },
+          {
+            id: "geographic-xyz",
+            label: "GEO XYZ",
+            note: "EPSG:4326 geographic matrix 地址",
+            crs: "EPSG:4326",
+            epsg: 4326,
+            url: `/tiles/${encName}/crs/epsg:4326/{z}/{x}/{y}.png?matrix=geographic`,
+            sampleUrl: `/tiles/${encName}/crs/epsg:4326/0/0/0.png?matrix=geographic`,
+            minZoom: 0,
+            maxZoom: source.max_zoom,
+            tms: false,
+          },
+          // WMTS modes
+          {
+            id: "wmts-kvp-webmercator",
+            label: "WMTS KVP (WebMercator)",
+            note: "WMTS 1.0.0 KVP 格式，WebMercator TileMatrixSet",
+            crs: "EPSG:3857",
+            epsg: 3857,
+            url: `${wmtsKvpBase}WebMercator&tilematrix={z}&tilerow={y}&tilecol={x}&format=image/png`,
+            sampleUrl: `${wmtsKvpBase}WebMercator&tilematrix=0&tilerow=0&tilecol=0&format=image/png`,
+            minZoom: 0,
+            maxZoom: 18,
+            tms: false,
+          },
+          {
+            id: "wmts-rest-webmercator",
+            label: "WMTS REST (WebMercator)",
+            note: "WMTS 1.0.0 RESTful 格式，WebMercator TileMatrixSet",
+            crs: "EPSG:3857",
+            epsg: 3857,
+            url: `${wmtsRestBase}WebMercator/{z}/{y}/{x}.png`,
+            sampleUrl: `${wmtsRestBase}WebMercator/0/0/0.png`,
+            minZoom: 0,
+            maxZoom: 18,
+            tms: false,
+          },
+          {
+            id: "wmts-kvp-geographic",
+            label: "WMTS KVP (Geographic)",
+            note: "WMTS 1.0.0 KVP 格式，Geographic TileMatrixSet",
+            crs: "EPSG:4326",
+            epsg: 4326,
+            url: `${wmtsKvpBase}Geographic&tilematrix={z}&tilerow={y}&tilecol={x}&format=image/png`,
+            sampleUrl: `${wmtsKvpBase}Geographic&tilematrix=0&tilerow=0&tilecol=0&format=image/png`,
+            minZoom: 0,
+            maxZoom: 18,
+            tms: false,
+          },
+          {
+            id: "wmts-rest-geographic",
+            label: "WMTS REST (Geographic)",
+            note: "WMTS 1.0.0 RESTful 格式，Geographic TileMatrixSet",
+            crs: "EPSG:4326",
+            epsg: 4326,
+            url: `${wmtsRestBase}Geographic/{z}/{y}/{x}.png`,
+            sampleUrl: `${wmtsRestBase}Geographic/0/0/0.png`,
+            minZoom: 0,
+            maxZoom: 18,
+            tms: false,
+          },
+          {
+            id: "wmts-kvp-native",
+            label: "WMTS KVP (Native)",
+            note: `WMTS 1.0.0 KVP 格式，原生 EPSG:${epsg} TileMatrixSet`,
+            crs: `EPSG:${epsg}`,
+            epsg,
+            url: `${wmtsKvpBase}EPSG:${epsg}-native&tilematrix={z}&tilerow={y}&tilecol={x}&format=image/png`,
+            sampleUrl: `${wmtsKvpBase}EPSG:${epsg}-native&tilematrix=${source.min_zoom}&tilerow=0&tilecol=0&format=image/png`,
+            minZoom: source.min_zoom,
+            maxZoom: source.max_zoom,
+            tms: false,
+          },
+          {
+            id: "wmts-rest-native",
+            label: "WMTS REST (Native)",
+            note: `WMTS 1.0.0 RESTful 格式，原生 EPSG:${epsg} TileMatrixSet`,
+            crs: `EPSG:${epsg}`,
+            epsg,
+            url: `${wmtsRestBase}EPSG:${epsg}-native/{z}/{y}/{x}.png`,
+            sampleUrl: `${wmtsRestBase}EPSG:${epsg}-native/${source.min_zoom}/0/0.png`,
+            minZoom: source.min_zoom,
+            maxZoom: source.max_zoom,
+            tms: false,
+          },
+        ];
+      }
+
+      function renderAddressModeOptions() {
+        addressModeSelect.innerHTML = state.addressModes.map(m => `
+          <option value="${escapeHtml(m.id)}">${escapeHtml(m.label)}</option>
+        `).join("");
+        addressModeSelect.value = state.addressMode.id;
+        updateCurrentAddressUI();
+      }
+
+      function switchAddressMode(modeId) {
+        const nextMode = state.addressModes.find(m => m.id === modeId);
+        if (!nextMode || !state.source) return;
+        state.addressMode = nextMode;
+        state.dataBounds = boundsToLeafletLatLngBounds(state.source, nextMode);
+        updateCurrentAddressUI();
+        initializeLeafletMap(state.source);
+        fitLeafletMapToSourceBounds(state.source);
+        renderPanelInfo(state.source);
+      }
+
+      function updateCurrentAddressUI() {
+        if (!state.addressMode) return;
+        currentUrlTemplate.value = state.addressMode.url;
+        addressModeNote.textContent = state.addressMode.note;
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // URL Actions
+      // ═══════════════════════════════════════════════════════════════════════
+      async function copyCurrentUrl() {
+        if (!currentUrlTemplate.value) return;
+        try {
+          await navigator.clipboard.writeText(currentUrlTemplate.value);
+        } catch (err) {
+          currentUrlTemplate.select();
+          document.execCommand("copy");
+        }
+      }
+
+      function openCurrentUrlExample() {
+        if (!state.addressMode) return;
+        window.open(state.addressMode.sampleUrl, "_blank", "noopener,noreferrer");
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // Panel Info
+      // ═══════════════════════════════════════════════════════════════════════
+      function renderPanelInfo(source) {
+        const epsg = getEpsg(source);
+        const origin = source.tile_info?.tile_origin || {};
+        const encName = encodeURIComponent(source.name);
+        const wmtsKvpUrl = `/wmts?service=WMTS&request=GetTile&layer=${encName}&tilematrixset=WebMercator&tilematrix={z}&tilerow={y}&tilecol={x}&format=image/png`;
+        const wmtsRestUrl = `/wmts/${encName}/default/WebMercator/{z}/{y}/{x}.png`;
+
+        panelTitle.textContent = source.name;
+        panelDesc.textContent = source.description || "无描述";
+
+        mapInfo.innerHTML = `
+          <div class="data-grid">
+            <span class="data-key">ENGINE</span>
+            <span class="data-value highlight">LEAFLET</span>
+            <span class="data-key">SRS</span>
+            <span class="data-value highlight">${escapeHtml(source.srs)}</span>
+            <span class="data-key">ZOOM</span>
+            <span class="data-value">${state.availableZooms.join(", ") || `${source.min_zoom}-${source.max_zoom}`}</span>
+            <span class="data-key">BBOX</span>
+            <span class="data-value">${formatBounds(source.bounds)}</span>
+            <span class="data-key">ORIGIN</span>
+            <span class="data-value">${formatNumber(origin.x)}, ${formatNumber(origin.y)}</span>
+            <span class="data-key">MODE</span>
+            <span class="data-value highlight">${escapeHtml(state.addressMode?.label || "SOURCE MATRIX")}</span>
+            <span class="data-key">URL</span>
+            <span class="data-value"><code>${escapeHtml(state.addressMode?.url || `/tiles/${source.name}/crs/epsg:${epsg}/{z}/{x}/{y}?matrix=source`)}</code></span>
+            <span class="data-key">WMTS KVP</span>
+            <span class="data-value"><code>${escapeHtml(wmtsKvpUrl)}</code></span>
+            <span class="data-key">WMTS REST</span>
+            <span class="data-value"><code>${escapeHtml(wmtsRestUrl)}</code></span>
+          </div>
+        `;
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // Utilities
+      // ═══════════════════════════════════════════════════════════════════════
+      function chooseInitialZoom(source) {
+        const levels = getAvailableZooms(source);
+        return levels.length ? levels[levels.length - 1] : source.max_zoom;
+      }
+
+      function getAvailableZooms(source) {
+        const fromLevels = (source.tile_info?.levels || [])
+          .map(l => Number(l.level))
+          .filter(l => Number.isFinite(l));
+        if (fromLevels.length) return [...new Set(fromLevels)].sort((a, b) => a - b);
+        const values = [];
+        for (let z = source.min_zoom; z <= source.max_zoom; z++) values.push(z);
+        return values;
+      }
+
+      function getEpsg(source) {
+        const match = String(source.srs || "").match(/EPSG:(\d+)/i);
+        return match ? Number(match[1]) : 3857;
+      }
+
+      function normalizeBounds(bounds) {
+        if (!Array.isArray(bounds) || bounds.length !== 4) return [-180, -90, 180, 90];
+        return bounds.map(v => Number(v));
+      }
+
+      function looksLikeLonLat(bounds) {
+        return Math.abs(bounds[0]) <= 180 && Math.abs(bounds[2]) <= 180 &&
+               Math.abs(bounds[1]) <= 90 && Math.abs(bounds[3]) <= 90;
+      }
+
+      function formatBounds(bounds) {
+        return normalizeBounds(bounds).map(formatNumber).join(", ");
+      }
+
+      function formatNumber(v) {
+        const n = Number(v);
+        if (!Number.isFinite(n)) return "-";
+        return Math.abs(n) >= 1000 ? n.toFixed(2) : n.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
+      }
+
+      function escapeHtml(v) {
+        return String(v ?? "").replace(/[&<>"']/g, c => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        })[c]);
+      }
+    </script>
+  </body>
+</html>

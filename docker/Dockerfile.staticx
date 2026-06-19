@@ -1,0 +1,91 @@
+FROM python:3.11-slim-bullseye AS builder
+
+# 安装构建依赖和 staticx
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    make \
+    binutils \
+    patchelf \
+    scons \
+    musl-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装 PyInstaller 和 staticx
+RUN pip install --no-cache-dir pyinstaller staticx
+
+WORKDIR /app
+
+# 复制项目文件（保持目录结构）
+COPY src/ ./src/
+COPY config/ ./config/
+COPY pyproject.toml .
+COPY tilemapservice.spec .
+
+# 安装项目依赖
+RUN pip install --no-cache-dir \
+    fastapi>=0.115.0 \
+    "uvicorn[standard]>=0.32.0" \
+    mercantile>=1.2.1 \
+    pyproj>=3.7.0 \
+    pillow>=11.0.0 \
+    pydantic>=2.10.0 \
+    cachetools>=5.5.0 \
+    pyyaml>=6.0.0
+
+# 用 PyInstaller 打包（onefile 模式，不包含静态文件）
+# 包含所有必需的 hidden imports 以修复 ModuleNotFoundError
+# 显式添加 PROJ 数据目录以支持 pyproj 坐标转换
+RUN PROJ_DATA=$(python -c "import pyproj; print(pyproj.datadir.get_data_dir())") && \
+    pyinstaller --onefile \
+    --name TileMapService \
+    --hidden-import urllib \
+    --hidden-import urllib.request \
+    --hidden-import urllib.parse \
+    --hidden-import urllib.error \
+    --hidden-import zipfile \
+    --hidden-import pathlib \
+    --hidden-import inspect \
+    --hidden-import uvicorn.logging \
+    --hidden-import uvicorn.loops.auto \
+    --hidden-import uvicorn.protocols.http.auto \
+    --hidden-import uvicorn.protocols.http.h11_impl \
+    --hidden-import uvicorn.protocols.websockets.auto \
+    --hidden-import uvicorn.lifespan.on \
+    --hidden-import anyio \
+    --hidden-import anyio._core \
+    --hidden-import anyio._core._eventloop \
+    --hidden-import anyio.to_thread \
+    --hidden-import anyio.abc \
+    --hidden-import anyio._backends \
+    --hidden-import anyio._backends._asyncio \
+    --hidden-import sniffio \
+    --collect-all tilemapservice \
+    --collect-all fastapi \
+    --collect-all pydantic \
+    --collect-all pydantic_core \
+    --collect-all pyproj \
+    --collect-all sniffio \
+    --collect-all certifi \
+    --add-data "$PROJ_DATA:pyproj/proj_dir/share/proj" \
+    --noconfirm \
+    --strip \
+    src/main.py
+
+# 用 staticx 转换（onefile 可执行文件）
+RUN staticx --strip dist/TileMapService /tmp/TileMapService.static && \
+    rm dist/TileMapService && \
+    mkdir -p dist/TileMapService && \
+    mv /tmp/TileMapService.static dist/TileMapService/TileMapService && \
+    chmod +x dist/TileMapService/TileMapService
+
+# 添加外置静态文件和配置
+RUN cp config/config.example.yaml dist/TileMapService/config.example.yaml && \
+    cp -r src/static dist/TileMapService/static
+
+# 在容器内创建带版本号的 tar.gz
+RUN VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])") && \
+    tar -czf /app/TileMapService-v${VERSION}-linux-staticx-x86_64.tar.gz -C dist TileMapService
+
+# 设置默认命令：复制到输出
+CMD ["sh", "-c", "ARCHIVE=$(ls /app/TileMapService-v*-linux-staticx-x86_64.tar.gz | head -n 1) && cp -r /app/dist/TileMapService /output/TileMapService && cp \"$ARCHIVE\" /output/ && echo \"Static build complete! onefile + staticx with external static files. Linux runs foreground (no fork). Compatible with CentOS 7.0+ (glibc 2.17+) | Directory: TileMapService/ | Archive: $(basename \"$ARCHIVE\")\""]
