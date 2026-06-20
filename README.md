@@ -304,7 +304,7 @@ tilemapservice/
 | Linux StaticX x86_64 | `TileMapService-v<version>-linux-staticx-x86_64.tar.gz` | StaticX 单文件兼容包 |
 | Linux StaticX aarch64 | `TileMapService-v<version>-linux-staticx-aarch64.tar.gz` | StaticX ARM64/aarch64 单文件兼容包 |
 
-GitHub Actions 会在 CI 中构建并验证上述包；普通分支/PR 可在 **Build Artifacts** 下载临时构建产物，打 tag 或创建发布时会将对应包上传到 **Release**。
+GitHub Actions 会在 CI 中构建并验证上述包；`main` 分支 push 或手动运行 workflow 时，可在 **Build Artifacts** 下载临时构建产物；推送 `v*` tag，或手动运行并输入已有 tag 时，会将对应包上传到 **GitHub Release**。
 
 ### Windows 构建
 ```powershell
