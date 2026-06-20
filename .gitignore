@@ -34,3 +34,4 @@ monitor-*.ps1
 # Claude Code (local settings only)
 .claude/
 docs/superpowers/
+.worktrees/
