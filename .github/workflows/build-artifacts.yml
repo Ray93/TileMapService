@@ -23,8 +23,12 @@ jobs:
       - name: Collect artifact
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
-          Copy-Item -Path TileMapService-v*-windows-x86_64.tar.gz -Destination artifacts/
+          New-Item -ItemType Directory -Path artifacts -Force | Out-Null
+          $archive = Get-ChildItem -Path . -Filter 'TileMapService-v*-windows-x86_64.tar.gz' | Select-Object -First 1
+          if (-not $archive) {
+            Write-Error 'Windows archive not found'
+          }
+          Copy-Item $archive.FullName -Destination artifacts
       - uses: actions/upload-artifact@v4
         with:
           name: tilemapservice-windows-x86_64

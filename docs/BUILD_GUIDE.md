@@ -19,7 +19,7 @@
 仓库提供 GitHub Actions 自动化工作流：
 
 - CI：在推送和 Pull Request 中运行测试，验证代码与构建基础环境。
-- Build Artifacts：手动构建发布包，可在 Actions 页面选择分支运行，用于验证某个分支的 Windows、Linux x86_64、Linux aarch64、Linux staticx x86_64 与 Linux staticx aarch64 包。
+- Build Artifacts：推送到 `main` 或手动触发时构建发布包；手动运行时可在 Actions 页面选择分支，用于验证某个分支的 Windows、Linux x86_64、Linux aarch64、Linux staticx x86_64 与 Linux staticx aarch64 包。
 - Release workflow：正式发布工作流。推送版本 tag 后，从该 tag 重新检出并重新构建发布包，再上传到 GitHub Release，确保 Release 资产与 tag 内容一致。
 
 正式发布示例：
