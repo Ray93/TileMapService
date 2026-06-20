@@ -21,7 +21,7 @@
 - TTL + LRU 缓存策略
 
 ### 部署方式
-- 打包目录（Windows/Linux）- onedir 模式，稳定可靠
+- 打包目录（Windows/Linux x86_64/Linux aarch64）- onedir 模式，稳定可靠
 - Linux systemd 开机自启动
 - Docker 容器化部署
 - Python 源码运行
@@ -294,6 +294,18 @@ tilemapservice/
 
 使用 PyInstaller **onedir 模式**打包。
 
+发布包汇总：
+
+| 平台 | 输出包名 | 说明 |
+| --- | --- | --- |
+| Windows x86_64 | `tilemapservice-windows-x86_64.zip` | Windows onedir 发布包 |
+| Linux x86_64 | `tilemapservice-linux-x86_64.tar.gz` | Linux x86_64 onedir 发布包 |
+| Linux aarch64 | `tilemapservice-linux-aarch64.tar.gz` | Linux ARM64/aarch64 onedir 发布包 |
+| Linux StaticX x86_64 | `tilemapservice-linux-staticx-x86_64.tar.gz` | StaticX 单文件兼容包 |
+| Linux StaticX aarch64 | `tilemapservice-linux-staticx-aarch64.tar.gz` | StaticX ARM64/aarch64 单文件兼容包 |
+
+GitHub Actions 会在 CI 中构建并验证上述包；普通分支/PR 可在 **Build Artifacts** 下载临时构建产物，打 tag 或创建发布时会将对应包上传到 **Release**。
+
 ### Windows 构建
 ```powershell
 uv sync --group build
@@ -341,7 +353,7 @@ uv run pytest tests/ -v
 ## 文档
 
 - [`CLAUDE.md`](CLAUDE.md) - 项目架构（Claude Code）
-- [`docs/BUILD_GUIDE.md`](docs/BUILD_GUIDE.md) - 构建指南（Windows/Linux/staticx）
+- [`docs/BUILD_GUIDE.md`](docs/BUILD_GUIDE.md) - 构建指南（Windows/Linux x86_64/Linux aarch64/staticx/GitHub Actions）
 - [`docs/SYSTEMD_GUIDE.md`](docs/SYSTEMD_GUIDE.md) - Linux systemd 开机自启动指南
 
 ---
