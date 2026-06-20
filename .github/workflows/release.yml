@@ -1,0 +1,208 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to release, for example v0.1.1"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  windows-x86_64:
+    name: Windows x86_64
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Build Windows package
+        shell: pwsh
+        run: .\scripts\build-windows.ps1
+
+      - name: Collect Windows package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path artifacts -Force | Out-Null
+          $archive = Get-ChildItem -Path . -Filter 'TileMapService-v*-windows-x86_64.tar.gz' | Select-Object -First 1
+          if (-not $archive) {
+            Write-Error 'Windows archive not found'
+          }
+          Copy-Item $archive.FullName -Destination artifacts
+
+      - name: Upload Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: tilemapservice-windows-x86_64
+          path: artifacts/TileMapService-v*-windows-x86_64.tar.gz
+          if-no-files-found: error
+
+  linux-x86_64:
+    name: Linux x86_64
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Linux x86_64 package
+        run: bash scripts/ci-build-linux.sh standard x86_64
+
+      - name: Upload Linux x86_64 package
+        uses: actions/upload-artifact@v4
+        with:
+          name: tilemapservice-linux-x86_64
+          path: artifacts/TileMapService-v*-linux-x86_64.tar.gz
+          if-no-files-found: error
+
+  linux-staticx-x86_64:
+    name: Linux staticx x86_64
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Linux staticx x86_64 package
+        run: bash scripts/ci-build-linux.sh staticx x86_64
+
+      - name: Upload Linux staticx x86_64 package
+        uses: actions/upload-artifact@v4
+        with:
+          name: tilemapservice-linux-staticx-x86_64
+          path: artifacts/TileMapService-v*-linux-staticx-x86_64.tar.gz
+          if-no-files-found: error
+
+  linux-aarch64:
+    name: Linux aarch64
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Linux aarch64 package
+        run: bash scripts/ci-build-linux.sh standard aarch64
+
+      - name: Upload Linux aarch64 package
+        uses: actions/upload-artifact@v4
+        with:
+          name: tilemapservice-linux-aarch64
+          path: artifacts/TileMapService-v*-linux-aarch64.tar.gz
+          if-no-files-found: error
+
+  linux-staticx-aarch64:
+    name: Linux staticx aarch64
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Linux staticx aarch64 package
+        run: bash scripts/ci-build-linux.sh staticx aarch64
+
+      - name: Upload Linux staticx aarch64 package
+        uses: actions/upload-artifact@v4
+        with:
+          name: tilemapservice-linux-staticx-aarch64
+          path: artifacts/TileMapService-v*-linux-staticx-aarch64.tar.gz
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs:
+      - windows-x86_64
+      - linux-x86_64
+      - linux-staticx-x86_64
+      - linux-aarch64
+      - linux-staticx-aarch64
+    permissions:
+      contents: write
+
+    steps:
+      - name: Resolve release tag
+        id: release-tag
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            tag="${{ inputs.tag }}"
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ ! "${tag}" =~ ^v[0-9] ]]; then
+            echo "Release tag must start with v followed by a digit, got: ${tag}" >&2
+            exit 1
+          fi
+
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: tilemapservice-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: List release assets
+        run: ls -la release-assets
+
+      - name: Create or update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release-tag.outputs.tag }}
+          name: TileMapService ${{ steps.release-tag.outputs.tag }}
+          files: release-assets/TileMapService-v*.tar.gz
+          fail_on_unmatched_files: true
+          overwrite_files: true
