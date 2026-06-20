@@ -69,4 +69,4 @@ if [[ ! -f "$expected_archive" ]]; then
 fi
 
 cp "$expected_archive" "$artifacts_dir/"
-echo "Copied $archive_name to $artifacts_dir/"
+echo "Created artifact: ${artifacts_dir}/$(basename "${expected_archive}")"
