@@ -1,5 +1,7 @@
 FROM python:3.11-slim-bullseye
 
+ARG TARGETARCH_NAME=x86_64
+
 # 安装构建依赖
 RUN apt-get update && apt-get install -y \
     gcc \
@@ -37,7 +39,7 @@ RUN pyinstaller tilemapservice.spec --clean
 # 显式复制 config.example.yaml 到应用目录
 RUN cp config/config.example.yaml dist/TileMapService/config.example.yaml && \
     VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])") && \
-    tar -czf /app/TileMapService-v${VERSION}-linux-x86_64.tar.gz -C dist TileMapService
+    tar -czf /app/TileMapService-v${VERSION}-linux-${TARGETARCH_NAME}.tar.gz -C dist TileMapService
 
 # 设置默认命令：复制 tar.gz 和目录到输出
-CMD ["sh", "-c", "ARCHIVE=$(ls /app/TileMapService-v*-linux-x86_64.tar.gz | head -n 1) && cp -r dist/TileMapService /output/ && cp \"$ARCHIVE\" /output/ && echo \"Build complete! Directory: TileMapService/ | Archive: $(basename \"$ARCHIVE\")\""]
+CMD ["sh", "-c", "ARCHIVE=$(ls /app/TileMapService-v*-linux-*.tar.gz | head -n 1) && cp -r dist/TileMapService /output/ && cp \"$ARCHIVE\" /output/ && echo \"Build complete! Directory: TileMapService/ | Archive: $(basename \"$ARCHIVE\")\""]
