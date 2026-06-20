@@ -1,5 +1,7 @@
 FROM python:3.11-slim-bullseye AS builder
 
+ARG TARGETARCH_NAME=x86_64
+
 # 安装构建依赖和 staticx
 RUN apt-get update && apt-get install -y \
     gcc \
@@ -85,7 +87,7 @@ RUN cp config/config.example.yaml dist/TileMapService/config.example.yaml && \
 
 # 在容器内创建带版本号的 tar.gz
 RUN VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])") && \
-    tar -czf /app/TileMapService-v${VERSION}-linux-staticx-x86_64.tar.gz -C dist TileMapService
+    tar -czf /app/TileMapService-v${VERSION}-linux-staticx-${TARGETARCH_NAME}.tar.gz -C dist TileMapService
 
 # 设置默认命令：复制到输出
-CMD ["sh", "-c", "ARCHIVE=$(ls /app/TileMapService-v*-linux-staticx-x86_64.tar.gz | head -n 1) && cp -r /app/dist/TileMapService /output/TileMapService && cp \"$ARCHIVE\" /output/ && echo \"Static build complete! onefile + staticx with external static files. Linux runs foreground (no fork). Compatible with CentOS 7.0+ (glibc 2.17+) | Directory: TileMapService/ | Archive: $(basename \"$ARCHIVE\")\""]
+CMD ["sh", "-c", "ARCHIVE=$(ls /app/TileMapService-v*-linux-staticx-*.tar.gz | head -n 1) && cp -r /app/dist/TileMapService /output/TileMapService && cp \"$ARCHIVE\" /output/ && echo \"Static build complete! onefile + staticx with external static files. Linux runs foreground (no fork). Compatible with CentOS 7.0+ (glibc 2.17+) | Directory: TileMapService/ | Archive: $(basename \"$ARCHIVE\")\""]
