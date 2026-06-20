@@ -64,7 +64,7 @@ jobs:
         run: uv sync
 
       - name: Run tests
-        run: uv run pytest tests/ -v
+        run: PYTHONPATH=src uv run pytest tests/ -v
 ```
 
 - [ ] **Step 2: Verify YAML file exists**
@@ -799,7 +799,7 @@ Insert this section after `版本号来自 pyproject.toml 的 project.version。
 
 仓库包含三条流水线：
 
-- `CI`：`push`、`pull_request`、手动触发时运行 `uv run pytest tests/ -v`。
+- `CI`：`push`、`pull_request`、手动触发时运行 `PYTHONPATH=src uv run pytest tests/ -v`。
 - `Build Artifacts`：推送到 `main` 或手动触发时构建所有平台包，并上传为 Actions artifacts。
 - `Release`：推送 `v*` tag 或手动输入已有 tag 时构建正式包，创建或更新 GitHub Release，并上传所有发布资产。
 
@@ -948,7 +948,7 @@ Expected: no uncommitted files.
 Run:
 
 ```powershell
-uv run pytest tests/ -v
+$env:PYTHONPATH='src'; uv run pytest tests/ -v
 ```
 
 Expected: all non-integration tests pass.
