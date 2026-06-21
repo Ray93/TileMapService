@@ -34,6 +34,7 @@ from datetime import datetime
 import yaml
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from tilemapservice.api.routes import api_router
 from tilemapservice.models.config import AppConfig
@@ -416,7 +417,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="显示版本号并退出")
     parser.add_argument("--host", type=str, default=None, help="服务主机地址")
     parser.add_argument("--port", type=int, default=None, help="服务端口")
-    parser.add_argument("--config", type=str, default="config.yaml", help="配置文件路径")
+    parser.add_argument("--config", type=str, default=default_config_path(), help="配置文件路径")
     parser.add_argument("--debug", action="store_true", default=None, help="调试模式")
     parser.add_argument("--daemon-internal", action="store_true", default=False, help=argparse.SUPPRESS)
     parser.add_argument("--cache-size", type=int, default=None, help="缓存最大瓦片数")
@@ -440,7 +441,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         start_parser = subparsers.add_parser('start', help='启动后台服务')
         start_parser.add_argument("--host", type=str, default=None, help="服务主机地址")
         start_parser.add_argument("--port", type=int, default=None, help="服务端口")
-        start_parser.add_argument("--config", type=str, default="config.yaml", help="配置文件路径")
+        start_parser.add_argument("--config", type=str, default=default_config_path(), help="配置文件路径")
         start_parser.add_argument("--debug", action="store_true", default=None, help="调试模式")
         start_parser.add_argument("--cache-size", type=int, default=None, help="缓存最大瓦片数")
         start_parser.add_argument("--cors", action="store_true", default=None, help="启用 CORS")
@@ -450,7 +451,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         restart_parser = subparsers.add_parser('restart', help='重启后台服务')
         restart_parser.add_argument("--host", type=str, default=None, help="服务主机地址")
         restart_parser.add_argument("--port", type=int, default=None, help="服务端口")
-        restart_parser.add_argument("--config", type=str, default="config.yaml", help="配置文件路径")
+        restart_parser.add_argument("--config", type=str, default=default_config_path(), help="配置文件路径")
         restart_parser.add_argument("--debug", action="store_true", default=None, help="调试模式")
         restart_parser.add_argument("--cache-size", type=int, default=None, help="缓存最大瓦片数")
         restart_parser.add_argument("--cors", action="store_true", default=None, help="启用 CORS")
@@ -494,9 +495,44 @@ def parse_env_value(current, value: str):
         return parse_bool(value)
     if isinstance(current, int):
         return int(value)
+    if isinstance(current, float):
+        return float(value)
     if isinstance(current, list):
         return [item.strip() for item in value.split(",") if item.strip()]
     return value
+
+
+def default_config_path() -> str:
+    """Config file path from TILEMAPSERVICE_CONFIG, falling back to config.yaml."""
+    return os.getenv("TILEMAPSERVICE_CONFIG", "config.yaml")
+
+
+def _resolve_env_path(obj: BaseModel, parts: list[str], value: str) -> bool:
+    """Apply one env override by longest-matching segments against model fields.
+
+    ``parts`` is the env-var name split on ``_`` after the ``TILEMAPSERVICE_``
+    prefix, e.g. ``["bundle", "pool", "max", "size"]`` or
+    ``["defaults", "spatial", "ref", "wkid"]``. Underscore-bearing field names
+    (``bundle_pool``, ``graceful_shutdown_timeout``) are matched by trying the
+    longest segment prefix first, then descending into nested models.
+
+    Returns True if a leaf field was set, False if no field matched or the path
+    tries to descend into a scalar.
+    """
+    fields = type(obj).model_fields
+    for k in range(len(parts), 0, -1):
+        name = "_".join(parts[:k])
+        if name not in fields:
+            continue
+        current = getattr(obj, name)
+        remaining = parts[k:]
+        if not remaining:
+            setattr(obj, name, parse_env_value(current, value))
+            return True
+        if isinstance(current, BaseModel):
+            return _resolve_env_path(current, remaining, value)
+        return False
+    return False
 
 
 def load_config(config_path: str = "config.yaml") -> AppConfig:
@@ -511,12 +547,11 @@ def load_config(config_path: str = "config.yaml") -> AppConfig:
         if not key.startswith(prefix) or key == "TILEMAPSERVICE_CONFIG":
             continue
         parts = key[len(prefix) :].lower().split("_")
-        section = parts[0]
-        if len(parts) > 1 and section in ("server", "cache", "cors"):
-            attr = "_".join(parts[1:])
-            target = getattr(config, section)
-            if hasattr(target, attr):
-                setattr(target, attr, parse_env_value(getattr(target, attr), value))
+        # 'sources' is a list of objects and cannot be represented as a single
+        # env var; configure data sources via the config file instead.
+        if parts[0] == "sources":
+            continue
+        _resolve_env_path(config, parts, value)
     return config
 
 
