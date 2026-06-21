@@ -302,18 +302,46 @@ def cmd_stop() -> int:
     print(f"Stopping TileMapService (PID: {pid})...")
     try:
         if sys.platform == 'win32':
-            # On Windows, use taskkill with /F directly for Python processes
-            # Python processes often don't respond to graceful SIGTERM
+            # On Windows, try graceful shutdown first, then force if needed
+            # 1. Try gentle taskkill (without /F) to allow graceful shutdown
+            print("Attempting graceful shutdown...")
+            subprocess.run(['taskkill', '/PID', str(pid)],
+                          stdout=subprocess.DEVNULL,
+                          stderr=subprocess.DEVNULL,
+                          timeout=10)
+
+            # Wait up to 5 seconds for graceful shutdown
+            graceful_wait = 5.0
+            check_interval = 0.1
+            elapsed = 0.0
+
+            while elapsed < graceful_wait:
+                if not is_process_running(pid):
+                    remove_pid_file()
+                    print("TileMapService stopped gracefully")
+                    return 0
+                time.sleep(check_interval)
+                elapsed += check_interval
+                check_interval = min(check_interval * 1.5, 0.5)
+
+            # 2. If still running after graceful wait, force terminate
+            print("Graceful shutdown timeout, forcing termination...")
             subprocess.run(['taskkill', '/F', '/PID', str(pid)],
                           stdout=subprocess.DEVNULL,
                           stderr=subprocess.DEVNULL,
                           timeout=10)
+
+            # Wait briefly for forced termination
+            for _ in range(10):
+                if not is_process_running(pid):
+                    break
+                time.sleep(0.1)
         else:
             # On Unix, try SIGTERM first
             os.kill(pid, signal.SIGTERM)
 
-        # Wait for process to terminate with exponential backoff
-        max_wait = 5  # seconds (reduced since we're using /F)
+        # Final check for process termination
+        max_wait = 2  # additional seconds after force kill
         check_interval = 0.1
         elapsed = 0.0
 
@@ -322,7 +350,6 @@ def cmd_stop() -> int:
                 break
             time.sleep(check_interval)
             elapsed += check_interval
-            check_interval = min(check_interval * 1.5, 0.5)
 
         if is_process_running(pid):
             print(f"Warning: Process {pid} may still be running")
