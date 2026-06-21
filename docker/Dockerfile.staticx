@@ -3,15 +3,26 @@ FROM python:3.11-slim-bullseye AS builder
 ARG TARGETARCH_NAME=x86_64
 
 # 安装构建依赖和 staticx
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    make \
-    binutils \
-    patchelf \
-    scons \
-    musl-tools \
-    && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+    echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries; \
+    echo 'Acquire::http::Timeout "30";' >> /etc/apt/apt.conf.d/80-retries; \
+    echo 'Acquire::https::Timeout "30";' >> /etc/apt/apt.conf.d/80-retries; \
+    for attempt in 1 2 3 4 5; do \
+        apt-get update && apt-get install -y --no-install-recommends \
+            gcc \
+            g++ \
+            make \
+            binutils \
+            patchelf \
+            scons \
+            musl-tools \
+            && break; \
+        if [ "$attempt" = "5" ]; then exit 1; fi; \
+        echo "apt failed on attempt ${attempt}/5, retrying..." >&2; \
+        rm -rf /var/lib/apt/lists/*; \
+        sleep $((attempt * 10)); \
+    done; \
+    rm -rf /var/lib/apt/lists/*
 
 # 安装 PyInstaller 和 staticx
 RUN pip install --no-cache-dir pyinstaller staticx
