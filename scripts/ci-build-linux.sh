@@ -53,6 +53,8 @@ mkdir -p "$out_dir" "$artifacts_dir"
 docker buildx build \
     --platform "$platform" \
     --build-arg "TARGETARCH_NAME=${arch}" \
+    --cache-from "type=gha,scope=tilemapservice-${variant}-${arch}" \
+    --cache-to "type=gha,mode=max,scope=tilemapservice-${variant}-${arch}" \
     --load \
     -t "$image_tag" \
     -f "$dockerfile" \
