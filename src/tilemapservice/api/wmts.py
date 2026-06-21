@@ -2,6 +2,7 @@
 import asyncio
 from fastapi import APIRouter, Request, Query, Path
 from fastapi.responses import Response, RedirectResponse
+from pydantic import ValidationError
 
 from tilemapservice.models.wmts import WmtsTileRequest
 from tilemapservice.services.wmts_service import WmtsService
@@ -228,6 +229,9 @@ async def _serve_wmts_tile(
 
     try:
         tile_response = await asyncio.to_thread(wmts_service.get_tile, wmts_request)
+    except ValidationError as exc:
+        stats.record_request(False, wmts_request.layer)
+        return _error_response("InvalidParameterValue", "Invalid tile coordinates")
     except InvalidTileRequestError as exc:
         stats.record_request(False, wmts_request.layer)
         return _error_response("InvalidParameterValue", exc.message)

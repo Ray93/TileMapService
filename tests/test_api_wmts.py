@@ -269,3 +269,41 @@ class TestServiceExceptionFormat:
         assert response.status_code == 400
         # The error message should have escaped special chars
         assert b"&lt;" in response.content or b"<test>" not in response.content
+
+
+class TestNegativeTileCoords:
+    """Negative tilematrix/tilerow/tilecol and out-of-range tilematrix must not
+    raise 500; return 400 ServiceException (InvalidParameterValue).
+
+    Same root cause as /tiles: uncaught pydantic ValidationError when
+    TileRequest is built with negative/out-of-range coords.
+    """
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "/wmts/test/default/WebMercator/-1/0/0",   # negative tilematrix (z)
+            "/wmts/test/default/WebMercator/0/-1/0",     # negative tilerow (y)
+            "/wmts/test/default/WebMercator/0/0/-1",      # negative tilecol (x)
+            "/wmts/test/default/WebMercator/23/0/0",      # tilematrix out of range
+            "/wmts?service=WMTS&request=GetTile&layer=test&tilematrixset=WebMercator&tilematrix=-1&tilerow=0&tilecol=0",  # KVP
+        ],
+    )
+    def test_negative_coords_return_400_not_500(self, url):
+        app = create_app(AppConfig())
+        app.state.tile_service = OkTileService()
+        app.state.source_manager = MockSourceManager()
+        client = TestClient(app, raise_server_exceptions=False)
+        response = client.get(url)
+        assert response.status_code == 400, f"{url} returned {response.status_code}"
+        assert b"ServiceException" in response.content
+        assert b"InvalidParameterValue" in response.content
+
+    def test_valid_coords_still_succeed(self):
+        """Regression guard: valid WMTS coords must keep returning 200."""
+        app = create_app(AppConfig())
+        app.state.tile_service = OkTileService()
+        app.state.source_manager = MockSourceManager()
+        client = TestClient(app)
+        response = client.get("/wmts/test/default/WebMercator/0/0/0")
+        assert response.status_code == 200

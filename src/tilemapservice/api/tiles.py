@@ -2,6 +2,7 @@
 import asyncio
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import Response
+from pydantic import ValidationError
 
 from tilemapservice.models.tile import TileRequest
 from tilemapservice.utils.exceptions import (
@@ -314,19 +315,29 @@ async def _serve_tile(
     output_format: str,
     service_type: str,
 ):
-    tile_request = TileRequest(
-        source_name=source,
-        z=z,
-        x=x,
-        y=y,
-        srs=srs,
-        matrix=matrix,
-        output_format=output_format,
-        service_type=service_type
-    )
     stats = request.app.state.stats
     try:
+        tile_request = TileRequest(
+            source_name=source,
+            z=z,
+            x=x,
+            y=y,
+            srs=srs,
+            matrix=matrix,
+            output_format=output_format,
+            service_type=service_type
+        )
         tile_response = await asyncio.to_thread(request.app.state.tile_service.get_tile, tile_request)
+    except ValidationError as exc:
+        stats.record_request(False, source)
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "ValidationError",
+                "message": "瓦片请求参数校验失败",
+                "context": {"errors": exc.errors()},
+            },
+        )
     except InvalidTileRequestError as exc:
         stats.record_request(False, source)
         raise HTTPException(status_code=400, detail={"error": exc.__class__.__name__, "message": exc.message, "context": exc.context})
