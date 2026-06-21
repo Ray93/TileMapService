@@ -712,7 +712,8 @@ def create_app(config: AppConfig) -> FastAPI:
     else:
         cache = TileCache(enabled=config.cache.enabled, max_size=config.cache.max_size, ttl=config.cache.ttl)
     source_manager = SourceManager(config.defaults)
-    stats = RequestStats()
+    known_sources = {src.name for src in config.sources}
+    stats = RequestStats(known_sources=known_sources)
     app.state.cache = cache
     app.state.source_manager = source_manager
     app.state.stats = stats

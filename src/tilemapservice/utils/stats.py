@@ -5,9 +5,14 @@ from time import time
 
 
 class RequestStats:
-    """Thread-safe request counters."""
+    """Thread-safe request counters.
 
-    def __init__(self):
+    Per-source stats are only tracked for known sources (those in the whitelist).
+    Unknown sources are grouped under '_unknown' to prevent unbounded memory growth
+    from attacker-controlled source/layer names.
+    """
+
+    def __init__(self, known_sources: set[str] | None = None):
         self.started_at = time()
         self._lock = Lock()
         self.requests_total = 0
@@ -16,6 +21,7 @@ class RequestStats:
         self.cache_hits = 0
         self.cache_misses = 0
         self.source_stats: dict[str, dict] = defaultdict(lambda: {"requests": 0, "cache_hits": 0})
+        self._known_sources = known_sources or set()
 
     def record_request(self, success: bool, source: str | None = None) -> None:
         with self._lock:
@@ -25,14 +31,16 @@ class RequestStats:
             else:
                 self.requests_failed += 1
             if source:
-                self.source_stats[source]["requests"] += 1
+                key = source if source in self._known_sources else "_unknown"
+                self.source_stats[key]["requests"] += 1
 
     def record_cache(self, hit: bool, source: str | None = None) -> None:
         with self._lock:
             if hit:
                 self.cache_hits += 1
                 if source:
-                    self.source_stats[source]["cache_hits"] += 1
+                    key = source if source in self._known_sources else "_unknown"
+                    self.source_stats[key]["cache_hits"] += 1
             else:
                 self.cache_misses += 1
 
