@@ -44,7 +44,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
       - name: Build Linux artifact
         run: bash scripts/ci-build-linux.sh standard x86_64
@@ -59,7 +58,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
       - name: Build staticx Linux artifact
         run: bash scripts/ci-build-linux.sh staticx x86_64
@@ -75,6 +73,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+          cache-image: false
       - uses: docker/setup-buildx-action@v4
       - name: Build Linux aarch64 artifact
         run: bash scripts/ci-build-linux.sh standard aarch64
@@ -90,6 +91,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+          cache-image: false
       - uses: docker/setup-buildx-action@v4
       - name: Build staticx Linux aarch64 artifact
         run: bash scripts/ci-build-linux.sh staticx aarch64
