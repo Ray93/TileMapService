@@ -32,9 +32,9 @@ class TileService:
             if not location.bundle_path.exists():
                 raise TileNotFoundError("Bundle 文件不存在", {"bundle_path": str(location.bundle_path)})
             if self.bundle_pool:
-                reader, reader_lock = self.bundle_pool.get(location.bundle_path)
-                with reader_lock:  # Ensure thread-safe file operations
-                    tile_data = reader.get_tile(location.local_row, location.local_col)
+                with self.bundle_pool.acquire(location.bundle_path) as (reader, reader_lock):
+                    with reader_lock:  # Ensure thread-safe file operations
+                        tile_data = reader.get_tile(location.local_row, location.local_col)
             else:
                 with BundleReader(location.bundle_path) as reader:
                     tile_data = reader.get_tile(location.local_row, location.local_col)
