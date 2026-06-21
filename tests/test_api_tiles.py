@@ -97,3 +97,36 @@ def test_valid_tile_coords_still_succeed():
     client = TestClient(app)
     response = client.get("/tiles/demo/0/0/0")
     assert response.status_code == 200
+
+
+def test_error_responses_do_not_leak_internal_paths():
+    """Error responses must not expose server-side paths in the context field.
+
+    This guards against point #4: bundle_path, local coordinates, and other
+    internal details should be logged server-side but not returned to clients.
+    """
+    from tilemapservice.utils.exceptions import BundleFormatError
+
+    class LeakyTileService:
+        """Tile service that raises exceptions with internal path context."""
+
+        def get_tile(self, request):
+            raise BundleFormatError(
+                "Invalid bundle format",
+                {"path": "/opt/data/bundles/L00/R0000C0000.bundle", "offset": 12345},
+            )
+
+    app = create_app(AppConfig())
+    app.state.tile_service = LeakyTileService()
+    client = TestClient(app, raise_server_exceptions=False)
+    response = client.get("/tiles/demo/0/0/0")
+    assert response.status_code == 500
+    detail = response.json()["detail"]
+    # error and message should be present
+    assert detail["error"] == "BundleFormatError"
+    assert "message" in detail
+    # context with internal paths must NOT be present
+    assert "context" not in detail, "context field must be omitted to prevent path leakage"
+    assert "/opt/data" not in response.text, "response must not contain server paths"
+    assert "bundle" not in response.text.lower() or "BundleFormatError" in response.text, \
+        "response must not leak bundle file paths (class name 'BundleFormatError' is OK)"

@@ -1,5 +1,7 @@
 """Tile API routes."""
 import asyncio
+import logging
+
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import Response
 from pydantic import ValidationError
@@ -13,6 +15,8 @@ from tilemapservice.utils.exceptions import (
     TileNotFoundError,
     TileReadError,
 )
+
+logger = logging.getLogger("tilemapservice")
 
 router = APIRouter()
 
@@ -340,13 +344,19 @@ async def _serve_tile(
         )
     except InvalidTileRequestError as exc:
         stats.record_request(False, source)
-        raise HTTPException(status_code=400, detail={"error": exc.__class__.__name__, "message": exc.message, "context": exc.context})
+        if exc.context:
+            logger.warning(f"Invalid tile request: {exc.message}", extra={"context": exc.context})
+        raise HTTPException(status_code=400, detail={"error": exc.__class__.__name__, "message": exc.message})
     except (SourceNotFoundError, TileNotFoundError) as exc:
         stats.record_request(False, source)
-        raise HTTPException(status_code=404, detail={"error": exc.__class__.__name__, "message": exc.message, "context": exc.context})
+        if exc.context:
+            logger.info(f"Tile not found: {exc.message}", extra={"context": exc.context})
+        raise HTTPException(status_code=404, detail={"error": exc.__class__.__name__, "message": exc.message})
     except (BundleFormatError, TileReadError, ImageFormatError) as exc:
         stats.record_request(False, source)
-        raise HTTPException(status_code=500, detail={"error": exc.__class__.__name__, "message": exc.message, "context": exc.context})
+        if exc.context:
+            logger.error(f"Tile service error: {exc.message}", extra={"context": exc.context})
+        raise HTTPException(status_code=500, detail={"error": exc.__class__.__name__, "message": exc.message})
 
     stats.record_request(True, source)
     return Response(
