@@ -40,6 +40,39 @@ def test_projected_source_matrix_size_for_epsg_3857():
     assert tms.matrix_size(1) == (2, 2)
 
 
+def test_geographic_source_matrix_size_for_epsg_4490():
+    """EPSG:4490 (CGCS2000, geographic, degree-based) must be supported via
+    CRS introspection rather than a hardcoded EPSG check.
+
+    Resolutions are from the real sample-data/4490 Conf.xml. L10 resolution
+    0.001373291015625 deg/px -> world is 360x180 deg -> 1024x512 tiles.
+    """
+    tms = TileMatrixSet(
+        "source",
+        "EPSG:4490",
+        -180.0,
+        90.0,
+        resolutions={10: 0.0013732910156250004},
+    )
+    assert tms.matrix_size(10) == (1024, 512)
+
+
+def test_geographic_source_matrix_size_validates_in_bounds():
+    """A real bundle at row 128, col 640 (L10) must validate within the matrix."""
+    tms = TileMatrixSet(
+        "source",
+        "EPSG:4490",
+        -180.0,
+        90.0,
+        resolutions={10: 0.0013732910156250004},
+    )
+    # Should not raise
+    tms.validate_tile(10, 640, 128)
+    # Out of range should raise
+    with pytest.raises(ValueError, match="tile out of range"):
+        tms.validate_tile(10, 1024, 0)
+
+
 def test_transform_point_same_crs_is_identity():
     coord = CoordinateTransformer()
     assert coord.transform_point(37.6, 55.7, "EPSG:4326", "4326") == (37.6, 55.7)

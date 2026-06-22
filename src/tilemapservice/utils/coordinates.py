@@ -26,17 +26,15 @@ class TileMatrixSet:
             return 1 << z, 1 << z
         if self.name == "geographic":
             return 1 << (z + 1), 1 << z
-        if self.resolutions and self.crs == "EPSG:4326":
+        if self.resolutions and z in self.resolutions:
+            # Derive matrix size from the tile origin (which bounds the world)
+            # and the per-level resolution. This works for any CRS whose origin
+            # spans the full world (geographic degree-based like EPSG:4326/4490,
+            # or projected like EPSG:3857), instead of hardcoding EPSG codes.
             res = self.resolutions[z]
-            return (
-                round(360 / (res * self.tile_width)),
-                round(180 / (res * self.tile_height)),
-            )
-        if self.resolutions and self.crs == "EPSG:3857":
-            res = self.resolutions[z]
-            world_size = 40075016.68557849
-            size = round(world_size / (res * self.tile_width))
-            return size, size
+            width = round((2 * abs(self.origin_x)) / (res * self.tile_width))
+            height = round((2 * abs(self.origin_y)) / (res * self.tile_height))
+            return max(width, 1), max(height, 1)
         raise ValueError("matrix_size must be configured for this Tile Matrix Set")
 
     def validate_tile(self, z: int, x: int, y: int) -> None:
