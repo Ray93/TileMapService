@@ -58,7 +58,7 @@ def test_geographic_source_matrix_size_for_epsg_4490():
 
 
 def test_geographic_source_matrix_size_validates_in_bounds():
-    """A real bundle at row 128, col 640 (L10) must validate within the matrix."""
+    """Source matrix skips x/y validation (lets file lookup handle 404), only validates z."""
     tms = TileMatrixSet(
         "source",
         "EPSG:4490",
@@ -66,11 +66,13 @@ def test_geographic_source_matrix_size_validates_in_bounds():
         90.0,
         resolutions={10: 0.0013732910156250004},
     )
-    # Should not raise
+    # Should not raise for any x/y (source matrix skips bounds check)
     tms.validate_tile(10, 640, 128)
-    # Out of range should raise
-    with pytest.raises(ValueError, match="tile out of range"):
-        tms.validate_tile(10, 1024, 0)
+    tms.validate_tile(10, 1024, 0)
+    tms.validate_tile(10, 99999, 99999)
+    # Negative z should raise
+    with pytest.raises(ValueError, match="z must be non-negative"):
+        tms.validate_tile(-1, 0, 0)
 
 
 def test_transform_point_same_crs_is_identity():

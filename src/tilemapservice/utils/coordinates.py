@@ -38,6 +38,16 @@ class TileMatrixSet:
         raise ValueError("matrix_size must be configured for this Tile Matrix Set")
 
     def validate_tile(self, z: int, x: int, y: int) -> None:
+        # For source matrix, skip x/y bounds check because matrix_size() returns global
+        # bounds (e.g., -180 to 180 for EPSG:4490), but actual data may cover only a subset.
+        # Let natural file lookup handle missing tiles. For webmercator/geographic, validate
+        # to catch coordinate errors early.
+        if self.name == "source":
+            # Only validate z is non-negative (x/y will be validated by file existence)
+            if z < 0:
+                raise ValueError(f"z must be non-negative: z={z}")
+            return
+
         width, height = self.matrix_size(z)
         if not (0 <= x < width and 0 <= y < height):
             raise ValueError(f"tile out of range for matrix {self.name}: z={z}, x={x}, y={y}")

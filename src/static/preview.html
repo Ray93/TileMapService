@@ -3,6 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <!-- Version: 2026-06-23-resolutions-fix -->
     <title>TileMapService Preview</title>
     <link rel="stylesheet" href="/libs/leaflet/leaflet.css" />
     <style>
@@ -1358,9 +1362,14 @@
           console.error("proj4 or proj4leaflet not loaded, SOURCE mode unavailable");
           return null;
         }
+
+        // proj4leaflet expects resolutions[z] for zoom level z, but backend returns
+        // resolutions array starting from min_zoom. Pad with nulls for zoom levels < min_zoom.
+        const fullResolutions = new Array(tm.min_zoom).fill(null).concat(tm.resolutions);
+
         proj4.defs(tm.crs, tm.proj4);
         return new L.Proj.CRS(tm.crs, tm.proj4, {
-          resolutions: tm.resolutions,
+          resolutions: fullResolutions,
           origin: [tm.origin.x, tm.origin.y],
         });
       }
