@@ -1375,7 +1375,27 @@
 
         const mode = state.addressMode || buildAddressModes(source)[0];
         const epsg = mode.epsg;
-        const crs = mode.crs === "EPSG:4326" ? L.CRS.EPSG4326 : L.CRS.EPSG3857;
+        let crs;
+
+        // SOURCE mode: use buildLeafletCrs with fallback
+        if (mode.id === "source") {
+          crs = buildLeafletCrs(source);
+          if (!crs) {
+            console.warn("SOURCE mode unavailable, falling back to first non-source mode");
+            const fallbackModes = buildAddressModes(source).filter(m => m.id !== "source");
+            if (fallbackModes.length === 0) {
+              throw new Error("No valid address modes available");
+            }
+            state.addressMode = fallbackModes[0];
+            state.dataBounds = boundsToLeafletLatLngBounds(source, state.addressMode);
+            renderAddressModeOptions();
+            initializeLeafletMap(source); // Recursion is safe: fallback uses built-in CRS
+            return;
+          }
+        } else {
+          // Non-SOURCE modes use built-in Leaflet CRS
+          crs = mode.crs === "EPSG:4326" ? L.CRS.EPSG4326 : L.CRS.EPSG3857;
+        }
 
         state.map = L.map("map-canvas", {
           crs,
