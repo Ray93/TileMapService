@@ -102,7 +102,9 @@ class SourceManager:
                 if path.is_dir() and path.name.startswith("L"):
                     suffix = path.name[1:]
                     if suffix.isdigit():
-                        levels.add(int(suffix))
+                        # Only include level if it contains at least one bundle file
+                        if any(path.glob("*.bundle")):
+                            levels.add(int(suffix))
         return sorted(levels)
 
     def _infer_bounds(
