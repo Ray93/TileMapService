@@ -1408,8 +1408,31 @@
               return;
             }
           }
+        } else if (mode.id.includes("wmts") && mode.id.includes("native")) {
+          // WMTS native mode: use proj4leaflet for non-standard CRS, built-in for standard
+          if (epsg === 3857) {
+            crs = L.CRS.EPSG3857;
+          } else if (epsg === 4326) {
+            crs = L.CRS.EPSG4326;
+          } else {
+            crs = buildLeafletCrs(source);
+            if (!crs) {
+              console.warn("WMTS native mode unavailable, falling back to webmercator WMTS");
+              const fallbackModes = buildAddressModes(source).filter(m =>
+                m.id.includes("wmts") && !m.id.includes("native")
+              );
+              if (fallbackModes.length === 0) {
+                throw new Error("No valid WMTS modes available");
+              }
+              state.addressMode = fallbackModes[0];
+              state.dataBounds = boundsToLeafletLatLngBounds(source, state.addressMode);
+              renderAddressModeOptions();
+              initializeLeafletMap(source);
+              return;
+            }
+          }
         } else {
-          // Non-SOURCE modes use built-in Leaflet CRS
+          // Other modes use built-in Leaflet CRS
           crs = mode.crs === "EPSG:4326" ? L.CRS.EPSG4326 : L.CRS.EPSG3857;
         }
 
