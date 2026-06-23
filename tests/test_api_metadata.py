@@ -1,7 +1,10 @@
+import pytest
 from fastapi.testclient import TestClient
+from pathlib import Path
 
 from main import create_app
 from tilemapservice.models.config import AppConfig, SourceConfig
+from tilemapservice.models.source import DataSource
 
 
 def test_sources_endpoint_returns_list():
@@ -94,3 +97,48 @@ def test_preview_html_has_large_workspace_layout_and_address_switcher():
     assert "buildAddressModes" in html
     assert "switchAddressMode" in html
     assert "copy-current-url" in html
+
+
+class TestCRSDefinition:
+    """Test _build_crs_definition() helper method."""
+
+    def test_geographic_crs(self):
+        """Test geographic CRS (EPSG:4490) returns is_geographic=True."""
+        source = DataSource(
+            name="test",
+            data_path=Path("/fake/path"),
+            spatial_ref_wkid=4490,
+        )
+        crs_def = source._build_crs_definition()
+
+        assert crs_def["is_geographic"] is True
+        assert crs_def["proj4"] is not None
+        assert "+proj=longlat" in crs_def["proj4"]
+        assert crs_def["wkt"] is not None
+
+    def test_projected_crs(self):
+        """Test projected CRS (EPSG:32650) returns is_geographic=False."""
+        source = DataSource(
+            name="test",
+            data_path=Path("/fake/path"),
+            spatial_ref_wkid=32650,
+        )
+        crs_def = source._build_crs_definition()
+
+        assert crs_def["is_geographic"] is False
+        assert crs_def["proj4"] is not None
+        assert "+proj=utm" in crs_def["proj4"]
+        assert crs_def["wkt"] is not None
+
+    def test_invalid_wkid(self):
+        """Test invalid WKID (99999) returns all None, no exception."""
+        source = DataSource(
+            name="test",
+            data_path=Path("/fake/path"),
+            spatial_ref_wkid=99999,
+        )
+        crs_def = source._build_crs_definition()
+
+        assert crs_def["is_geographic"] is None
+        assert crs_def["proj4"] is None
+        assert crs_def["wkt"] is None

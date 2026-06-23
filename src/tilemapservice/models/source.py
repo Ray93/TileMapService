@@ -91,3 +91,20 @@ class DataSource(BaseModel):
             "tile_url_template": f"/tiles/{self.name}/{{z}}/{{x}}/{{y}}",
         }
 
+    def _build_crs_definition(self) -> dict:
+        """Generate CRS definition (proj4, WKT, is_geographic) from pyproj.
+
+        Returns dict with keys: is_geographic, proj4, wkt.
+        All values are None if CRS parsing fails (invalid WKID).
+        """
+        from pyproj import CRS
+        try:
+            crs = CRS.from_user_input(self.srs)
+            return {
+                "is_geographic": crs.is_geographic,
+                "proj4": crs.to_proj4(),
+                "wkt": crs.to_wkt(),
+            }
+        except Exception:
+            return {"is_geographic": None, "proj4": None, "wkt": None}
+
