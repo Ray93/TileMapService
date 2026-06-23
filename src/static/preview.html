@@ -1386,20 +1386,27 @@
         const epsg = mode.epsg;
         let crs;
 
-        // SOURCE mode: use buildLeafletCrs with fallback
+        // SOURCE mode: use built-in CRS for standard EPSG codes, proj4leaflet for others
         if (mode.id === "source") {
-          crs = buildLeafletCrs(source);
-          if (!crs) {
-            console.warn("SOURCE mode unavailable, falling back to first non-source mode");
-            const fallbackModes = buildAddressModes(source).filter(m => m.id !== "source");
-            if (fallbackModes.length === 0) {
-              throw new Error("No valid address modes available");
+          if (epsg === 3857) {
+            crs = L.CRS.EPSG3857;
+          } else if (epsg === 4326) {
+            crs = L.CRS.EPSG4326;
+          } else {
+            // Non-standard CRS: use proj4leaflet
+            crs = buildLeafletCrs(source);
+            if (!crs) {
+              console.warn("SOURCE mode unavailable, falling back to first non-source mode");
+              const fallbackModes = buildAddressModes(source).filter(m => m.id !== "source");
+              if (fallbackModes.length === 0) {
+                throw new Error("No valid address modes available");
+              }
+              state.addressMode = fallbackModes[0];
+              state.dataBounds = boundsToLeafletLatLngBounds(source, state.addressMode);
+              renderAddressModeOptions();
+              initializeLeafletMap(source); // Recursion is safe: fallback uses built-in CRS
+              return;
             }
-            state.addressMode = fallbackModes[0];
-            state.dataBounds = boundsToLeafletLatLngBounds(source, state.addressMode);
-            renderAddressModeOptions();
-            initializeLeafletMap(source); // Recursion is safe: fallback uses built-in CRS
-            return;
           }
         } else {
           // Non-SOURCE modes use built-in Leaflet CRS
@@ -1467,8 +1474,18 @@
             // Geographic CRS: bounds are in degrees, treat as lat/lng
             return L.latLngBounds([bounds[1], bounds[0]], [bounds[3], bounds[2]]);
           } else {
-            // Projected CRS: unproject via buildLeafletCrs
-            const crs = buildLeafletCrs(source);
+            // Projected CRS: use built-in CRS for standard EPSG codes, proj4leaflet for others
+            const epsg = getEpsg(source);
+            let crs;
+            if (epsg === 3857) {
+              crs = L.CRS.EPSG3857;
+            } else if (epsg === 4326) {
+              crs = L.CRS.EPSG4326;
+            } else {
+              // Non-standard CRS: use proj4leaflet
+              crs = buildLeafletCrs(source);
+            }
+
             if (crs) {
               const southWest = crs.unproject(L.point(bounds[0], bounds[1]));
               const northEast = crs.unproject(L.point(bounds[2], bounds[3]));
