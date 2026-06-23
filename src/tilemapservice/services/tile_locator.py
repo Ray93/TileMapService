@@ -50,6 +50,24 @@ class TileLocator:
         )
 
         source_level = source.tile_matrix_set.select_closest_level(abs(target_resolution))
+        source_resolution = source.tile_matrix_set.tile_resolution(source_level)
+
+        # Validate that the selected source level's resolution is close enough to the target resolution
+        # Reject if the ratio exceeds 1.5x in either direction (upscaling or downscaling too much)
+        resolution_ratio = abs(target_resolution) / source_resolution
+        if resolution_ratio < 0.67 or resolution_ratio > 1.5:
+            raise TileNotFoundError(
+                f"请求的瓦片分辨率与数据源可用分辨率相差过大",
+                {
+                    "source": source.name,
+                    "request_z": request.z,
+                    "selected_source_level": source_level,
+                    "target_resolution": target_resolution,
+                    "source_resolution": source_resolution,
+                    "resolution_ratio": resolution_ratio,
+                },
+            )
+
         source_tile_x, source_tile_y = source.tile_matrix_set.crs_to_tile(
             source_center_x,
             source_center_y,
