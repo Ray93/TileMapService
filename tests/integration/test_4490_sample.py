@@ -54,3 +54,55 @@ def test_4490_api_serves_real_tile():
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/png"
     assert response.content.startswith(b"\x89PNG")
+
+
+def test_4490_api_tile_matrix_has_valid_proj4():
+    """Verify tile_matrix structure in API response for EPSG:4490 source.
+
+    The tile_matrix field must contain CRS definition (proj4, WKT) and tile
+    scheme metadata for arbitrary geographic CRS frontend rendering.
+    """
+    app = create_app(AppConfig(sources=[SourceConfig(name="cgcs2000", path=str(FIXTURE_4490))]))
+    with TestClient(app) as client:
+        response = client.get("/api/sources/cgcs2000")
+    assert response.status_code == 200
+    data = response.json()
+
+    # Verify tile_matrix field exists
+    assert "tile_matrix" in data
+    tm = data["tile_matrix"]
+
+    # CRS metadata
+    assert tm["crs"] == "EPSG:4490"
+    assert tm["is_geographic"] is True
+    assert tm["proj4"] is not None
+    assert "+proj=longlat" in tm["proj4"]
+    assert tm["wkt"] is not None
+
+    # Tile scheme
+    assert tm["origin"]["x"] == pytest.approx(-180.0)
+    assert tm["origin"]["y"] == pytest.approx(90.0)
+    assert tm["tile_size"] == 256
+
+    # Zoom and resolutions (fixture has only L06)
+    assert tm["min_zoom"] == 6
+    assert tm["max_zoom"] == 6
+    assert len(tm["resolutions"]) == 1
+    assert tm["resolutions"][0] > 0
+
+
+def test_4490_non_source_mode_returns_expected_error():
+    """Verify non-source matrix modes fail gracefully for EPSG:4490 data.
+
+    Attempting webmercator or geographic transforms on 4490 data should return
+    400 or 404 (not 500 crash), since the service doesn't support arbitrary
+    CRS reprojection.
+    """
+    app = create_app(AppConfig(sources=[SourceConfig(name="cgcs2000", path=str(FIXTURE_4490))]))
+    with TestClient(app) as client:
+        # Try to request with webmercator matrix (should fail gracefully)
+        response = client.get("/tiles/cgcs2000/6/47/10.png?matrix=webmercator")
+
+    # Accept either 400 (bad request) or 404 (not found), but not 500 (crash)
+    assert response.status_code in (400, 404)
+    assert response.status_code != 500
