@@ -1480,10 +1480,12 @@
 
       function fitLeafletMapToSourceBounds(source) {
         if (!state.map || !state.dataBounds) return;
+        const initialZoom = chooseInitialZoom(source);
         state.map.fitBounds(state.dataBounds, {
           padding: [32, 32],
-          maxZoom: chooseInitialZoom(source),
         });
+        // Force zoom to initial zoom (highest available level) after fitBounds
+        state.map.setZoom(initialZoom);
         if (zoomDisplay) zoomDisplay.textContent = state.map.getZoom();
       }
 
@@ -1759,7 +1761,7 @@
       // ═══════════════════════════════════════════════════════════════════════
       function chooseInitialZoom(source) {
         const levels = getAvailableZooms(source);
-        return levels.length ? levels[levels.length - 1] : source.max_zoom;
+        return levels.length ? levels[0] : source.min_zoom;
       }
 
       function getAvailableZooms(source) {

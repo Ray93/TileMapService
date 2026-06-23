@@ -76,7 +76,8 @@ def test_preview_html_starts_at_highest_available_source_zoom():
     response = client.get("/preview/demo")
 
     assert response.status_code == 200
-    assert "return levels.length ? levels[levels.length - 1] : source.max_zoom;" in response.text
+    # Changed to use min_zoom (first level) instead of max_zoom (last level) for better initial view
+    assert "return levels.length ? levels[0] : source.min_zoom;" in response.text
 
 
 def test_preview_html_has_large_workspace_layout_and_address_switcher():
