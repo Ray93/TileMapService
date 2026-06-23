@@ -1453,8 +1453,11 @@
         const wmtsKvpBase = `/wmts?service=WMTS&request=GetTile&layer=${encName}&tilematrixset=`;
         const wmtsRestBase = `/wmts/${encName}/default/`;
 
-        return [
-          {
+        const modes = [];
+
+        // SOURCE mode: only offer if tile_matrix.proj4 is available
+        if (source.tile_matrix && source.tile_matrix.proj4) {
+          modes.push({
             id: "source",
             label: "SOURCE MATRIX",
             note: "原生 CRS 与 Tile Matrix，适合排查原始排列",
@@ -1465,7 +1468,11 @@
             minZoom: source.min_zoom,
             maxZoom: source.max_zoom,
             tms: false,
-          },
+          });
+        }
+
+        // Other modes (always available)
+        modes.push(
           {
             id: "webmercator-xyz",
             label: "WEBXYZ",
@@ -1574,8 +1581,10 @@
             minZoom: source.min_zoom,
             maxZoom: source.max_zoom,
             tms: false,
-          },
-        ];
+          }
+        );
+
+        return modes;
       }
 
       function renderAddressModeOptions() {
