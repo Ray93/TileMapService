@@ -1150,6 +1150,8 @@
     </div>
 
     <script src="/libs/leaflet/leaflet.js"></script>
+    <script src="/libs/proj4js/proj4.js"></script>
+    <script src="/libs/proj4leaflet/proj4leaflet.js"></script>
     <script>
       // ═══════════════════════════════════════════════════════════════════════
       // Theme Management
@@ -1339,6 +1341,28 @@
           panelTitle.textContent = "加载失败";
           panelDesc.textContent = error.message;
         }
+      }
+
+      /**
+       * Build L.Proj.CRS from source's tile_matrix metadata.
+       * Returns null if CRS cannot be built (missing proj4 string or libraries not loaded).
+       * Caller must handle null and either disable SOURCE mode or show error message.
+       */
+      function buildLeafletCrs(source) {
+        const tm = source.tile_matrix;
+        if (!tm || !tm.proj4) {
+          console.error(`Source ${source.name} lacks valid tile_matrix, SOURCE mode unavailable`);
+          return null;
+        }
+        if (typeof proj4 === "undefined" || typeof L.Proj === "undefined") {
+          console.error("proj4 or proj4leaflet not loaded, SOURCE mode unavailable");
+          return null;
+        }
+        proj4.defs(tm.crs, tm.proj4);
+        return new L.Proj.CRS(tm.crs, tm.proj4, {
+          resolutions: tm.resolutions,
+          origin: [tm.origin.x, tm.origin.y],
+        });
       }
 
       function initializeLeafletMap(source) {
