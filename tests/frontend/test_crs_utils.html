@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>QUnit Test Suite: CRS Utils</title>
+  <link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-2.20.0.css">
+  <script>
+    // Detect base path: if file:// use relative, if http:// use absolute from project root
+    const isFileProtocol = window.location.protocol === 'file:';
+    const basePath = isFileProtocol ? '../../src/static' : '/src/static';
+
+    // Dynamically inject Leaflet CSS
+    document.write('<link rel="stylesheet" href="' + basePath + '/libs/leaflet/leaflet.css">');
+  </script>
+</head>
+<body>
+  <div id="qunit"></div>
+  <div id="qunit-fixture"></div>
+
+  <!-- QUnit -->
+  <script src="https://code.jquery.com/qunit/qunit-2.20.0.js"></script>
+
+  <!-- Dependencies: Leaflet, proj4, proj4leaflet (loaded dynamically) -->
+  <script>
+    // Load libraries using detected base path
+    const scripts = [
+      basePath + '/libs/leaflet/leaflet.js',
+      basePath + '/libs/proj4js/proj4.js',
+      basePath + '/libs/proj4leaflet/proj4leaflet.js'
+    ];
+
+    scripts.forEach(src => {
+      document.write('<script src="' + src + '"><\/script>');
+    });
+  </script>
+
+  <!-- Code Under Test -->
+  <script>
+    /**
+     * Build L.Proj.CRS from source's tile_matrix metadata.
+     * Returns null if CRS cannot be built (missing proj4 string or libraries not loaded).
+     * Caller must handle null and either disable SOURCE mode or show error message.
+     */
+    function buildLeafletCrs(source) {
+      const tm = source.tile_matrix;
+      if (!tm || !tm.proj4) {
+        console.error(`Source ${source.name} lacks valid tile_matrix, SOURCE mode unavailable`);
+        return null;
+      }
+      if (typeof proj4 === "undefined" || typeof L.Proj === "undefined") {
+        console.error("proj4 or proj4leaflet not loaded, SOURCE mode unavailable");
+        return null;
+      }
+      proj4.defs(tm.crs, tm.proj4);
+      return new L.Proj.CRS(tm.crs, tm.proj4, {
+        resolutions: tm.resolutions,
+        origin: [tm.origin.x, tm.origin.y],
+      });
+    }
+  </script>
+
+  <!-- Tests -->
+  <script>
+    QUnit.module("buildLeafletCrs", function() {
+      QUnit.test("returns valid L.Proj.CRS for EPSG:4490", function(assert) {
+        const source = {
+          name: "cgcs2000-tiles",
+          tile_matrix: {
+            crs: "EPSG:4490",
+            proj4: "+proj=longlat +ellps=GRS80 +no_defs +type=crs",
+            resolutions: [0.703125, 0.3515625, 0.17578125],
+            origin: { x: -180.0, y: 90.0 }
+          }
+        };
+
+        const crs = buildLeafletCrs(source);
+
+        assert.ok(crs !== null, "CRS should not be null");
+        assert.ok(crs instanceof L.Proj.CRS, "CRS should be an instance of L.Proj.CRS");
+        assert.strictEqual(crs.code, "EPSG:4490", "CRS code should be EPSG:4490");
+        assert.ok(crs.options.resolutions, "CRS should have resolutions");
+        assert.deepEqual(crs.options.resolutions, [0.703125, 0.3515625, 0.17578125], "Resolutions should match input");
+        assert.ok(crs.options.origin, "CRS should have origin");
+        assert.deepEqual(crs.options.origin, [-180.0, 90.0], "Origin should match input");
+      });
+
+      QUnit.test("returns null when proj4 string is missing", function(assert) {
+        const source = {
+          name: "missing-proj4",
+          tile_matrix: {
+            crs: "EPSG:4490",
+            // proj4 is missing
+            resolutions: [0.703125],
+            origin: { x: -180.0, y: 90.0 }
+          }
+        };
+
+        const crs = buildLeafletCrs(source);
+
+        assert.strictEqual(crs, null, "CRS should be null when proj4 string is missing");
+      });
+
+      QUnit.test("returns null when tile_matrix is missing", function(assert) {
+        const source = {
+          name: "no-tile-matrix",
+          // tile_matrix is missing
+        };
+
+        const crs = buildLeafletCrs(source);
+
+        assert.strictEqual(crs, null, "CRS should be null when tile_matrix is missing");
+      });
+
+      QUnit.test("proj4 library is loaded", function(assert) {
+        assert.ok(typeof proj4 !== "undefined", "proj4 global should be defined");
+        assert.ok(typeof proj4.defs === "function", "proj4.defs should be a function");
+      });
+
+      QUnit.test("proj4leaflet library is loaded", function(assert) {
+        assert.ok(typeof L !== "undefined", "Leaflet global should be defined");
+        assert.ok(typeof L.Proj !== "undefined", "L.Proj should be defined");
+        assert.ok(typeof L.Proj.CRS === "function", "L.Proj.CRS should be a constructor");
+      });
+
+      QUnit.test("handles EPSG:3857 (Web Mercator)", function(assert) {
+        const source = {
+          name: "webmercator-tiles",
+          tile_matrix: {
+            crs: "EPSG:3857",
+            proj4: "+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs +type=crs",
+            resolutions: [156543.03392804097, 78271.51696402048, 39135.75848201024],
+            origin: { x: -20037508.342789244, y: 20037508.342789244 }
+          }
+        };
+
+        const crs = buildLeafletCrs(source);
+
+        assert.ok(crs !== null, "CRS should not be null");
+        assert.strictEqual(crs.code, "EPSG:3857", "CRS code should be EPSG:3857");
+      });
+
+      QUnit.test("handles custom resolutions array", function(assert) {
+        const source = {
+          name: "custom-resolutions",
+          tile_matrix: {
+            crs: "EPSG:4490",
+            proj4: "+proj=longlat +ellps=GRS80 +no_defs +type=crs",
+            resolutions: [1.0, 0.5, 0.25, 0.125, 0.0625],
+            origin: { x: 0, y: 0 }
+          }
+        };
+
+        const crs = buildLeafletCrs(source);
+
+        assert.ok(crs !== null, "CRS should not be null");
+        assert.strictEqual(crs.options.resolutions.length, 5, "Should have 5 resolutions");
+        assert.strictEqual(crs.options.resolutions[0], 1.0, "First resolution should be 1.0");
+        assert.strictEqual(crs.options.resolutions[4], 0.0625, "Last resolution should be 0.0625");
+      });
+
+      QUnit.test("handles different origin values", function(assert) {
+        const source = {
+          name: "custom-origin",
+          tile_matrix: {
+            crs: "EPSG:4490",
+            proj4: "+proj=longlat +ellps=GRS80 +no_defs +type=crs",
+            resolutions: [0.5],
+            origin: { x: 100.0, y: 50.0 }
+          }
+        };
+
+        const crs = buildLeafletCrs(source);
+
+        assert.ok(crs !== null, "CRS should not be null");
+        assert.deepEqual(crs.options.origin, [100.0, 50.0], "Origin should be [100.0, 50.0]");
+      });
+
+      QUnit.test("proj4 definition is registered", function(assert) {
+        const source = {
+          name: "test-registration",
+          tile_matrix: {
+            crs: "EPSG:4490",
+            proj4: "+proj=longlat +ellps=GRS80 +no_defs +type=crs",
+            resolutions: [0.5],
+            origin: { x: -180.0, y: 90.0 }
+          }
+        };
+
+        buildLeafletCrs(source);
+
+        // Verify proj4 registered the definition
+        const def = proj4.defs("EPSG:4490");
+        assert.ok(def !== null && def !== undefined, "proj4 definition should be registered for EPSG:4490");
+      });
+    });
+  </script>
+</body>
+</html>
