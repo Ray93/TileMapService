@@ -75,6 +75,15 @@ class DataSource(BaseModel):
         raise FileNotFoundError(f"层级目录不存在: L{z:02d}")
 
     def to_dict(self) -> dict:
+        """Serialize DataSource to dict for API responses."""
+        crs_def = self._build_crs_definition()
+        resolutions = []
+        if self.tile_matrix_set:
+            resolutions = [
+                self.tile_matrix_set.tile_resolution(z)
+                for z in range(self.min_zoom, self.max_zoom + 1)
+            ]
+
         return {
             "name": self.name,
             "description": self.description,
@@ -87,6 +96,17 @@ class DataSource(BaseModel):
                 "tile_origin": {"x": self.tile_origin[0], "y": self.tile_origin[1]},
                 "levels": self.levels,
                 "matrix": self.tile_matrix_set.name if self.tile_matrix_set else "source",
+            },
+            "tile_matrix": {
+                "crs": self.srs,
+                "is_geographic": crs_def["is_geographic"],
+                "proj4": crs_def["proj4"],
+                "wkt": crs_def["wkt"],
+                "origin": {"x": self.tile_origin[0], "y": self.tile_origin[1]},
+                "tile_size": self.tile_size,
+                "resolutions": resolutions,
+                "min_zoom": self.min_zoom,
+                "max_zoom": self.max_zoom,
             },
             "tile_url_template": f"/tiles/{self.name}/{{z}}/{{x}}/{{y}}",
         }
