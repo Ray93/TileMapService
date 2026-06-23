@@ -1430,8 +1430,26 @@
 
       function boundsToLeafletLatLngBounds(source, mode = state.addressMode) {
         const bounds = normalizeBounds(source.bounds);
-        const epsg = getEpsg(source);
+        const tm = source.tile_matrix;
 
+        // Use tile_matrix.is_geographic to determine if bounds are in degrees
+        if (tm && tm.is_geographic !== undefined) {
+          if (tm.is_geographic) {
+            // Geographic CRS: bounds are in degrees, treat as lat/lng
+            return L.latLngBounds([bounds[1], bounds[0]], [bounds[3], bounds[2]]);
+          } else {
+            // Projected CRS: unproject via buildLeafletCrs
+            const crs = buildLeafletCrs(source);
+            if (crs) {
+              const southWest = crs.unproject(L.point(bounds[0], bounds[1]));
+              const northEast = crs.unproject(L.point(bounds[2], bounds[3]));
+              return L.latLngBounds(southWest, northEast);
+            }
+          }
+        }
+
+        // Fallback to legacy heuristic for sources without tile_matrix
+        const epsg = getEpsg(source);
         if (epsg === 3857 && !looksLikeLonLat(bounds)) {
           const southWest = L.CRS.EPSG3857.unproject(L.point(bounds[0], bounds[1]));
           const northEast = L.CRS.EPSG3857.unproject(L.point(bounds[2], bounds[3]));
