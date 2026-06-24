@@ -6,6 +6,38 @@
 
 高性能离线瓦片地图服务，支持读取 ESRI ArcGIS Compact Cache 并发布为标准瓦片服务（XYZ、TMS、WMTS）。
 
+## 📸 界面预览
+
+### 数据源列表
+
+<table>
+  <tr>
+    <td width="50%">
+      <b>亮色模式</b><br/>
+      <img src="docs/images/home-light.png" alt="数据源列表 - 亮色模式" />
+    </td>
+    <td width="50%">
+      <b>暗色模式</b><br/>
+      <img src="docs/images/home-dark.png" alt="数据源列表 - 暗色模式" />
+    </td>
+  </tr>
+</table>
+
+### 地图预览
+
+<table>
+  <tr>
+    <td width="50%">
+      <b>亮色模式</b><br/>
+      <img src="docs/images/map-preview-light.png" alt="地图预览 - 亮色模式" />
+    </td>
+    <td width="50%">
+      <b>暗色模式</b><br/>
+      <img src="docs/images/map-preview-dark.png" alt="地图预览 - 暗色模式" />
+    </td>
+  </tr>
+</table>
+
 ## 特性
 
 ### 核心功能
