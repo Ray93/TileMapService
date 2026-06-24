@@ -10,7 +10,7 @@
 
 ### 核心功能
 - 支持 ArcGIS Compact Cache V1/V2 格式
-- 多坐标系：EPSG:3857 (Web Mercator) / EPSG:4326 (Geographic)
+- 多坐标系：支持任意 EPSG 坐标系（EPSG:3857, EPSG:4326, EPSG:4490 等）
 - 多请求方式：XYZ / TMS / Source Matrix / Geographic Matrix
 - 图像格式：PNG / JPEG / 自动格式
 - WMTS 1.0.0 标准协议支持
@@ -221,10 +221,21 @@ GET /wmts/{source}/{TileMatrix}/{TileRow}/{TileCol}
 ### 元数据与监控
 ```
 GET /api/sources          - 数据源列表
-GET /api/sources/{name}   - 数据源详情
+GET /api/sources/{name}   - 数据源详情（包含 tile_matrix CRS 元数据）
 GET /api/stats            - 性能统计（缓存命中率、请求计数）
 GET /health               - 健康检查
 ```
+
+**API 响应字段说明**:
+- `tile_info`: 瓦片方案、层级定义（向后兼容）
+- `tile_matrix`: CRS 元数据（proj4、WKT、分辨率数组），支持任意 EPSG 预览
+  - `crs`: EPSG 代码（如 "EPSG:4490"）
+  - `proj4`: Proj4 定义字符串
+  - `wkt`: WKT 定义
+  - `is_geographic`: 布尔标志
+  - `resolutions`: 各缩放级别的分辨率数组
+  - `origin`: 瓦片原点坐标
+  - `tile_size`: 瓦片尺寸（像素）
 
 ---
 
@@ -367,6 +378,8 @@ uv run pytest tests/ -v
 - **mercantile** - 瓦片计算
 - **cachetools** - 缓存实现
 - **Leaflet** - 地图预览
+- **proj4js** - 坐标系转换（前端）
+- **proj4leaflet** - Leaflet 任意 EPSG 支持
 
 ---
 

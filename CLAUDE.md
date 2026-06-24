@@ -90,6 +90,18 @@ HTTP Request → API Router → TileService → TileLocator → BundlePool → B
 - `image_formatter.py` - PNG/JPEG/auto format conversion
 - `capabilities_builder.py` + `wmts_service.py` - WMTS Capabilities XML
 
+**API Response Structure**:
+- `/api/sources/{name}` returns:
+  - `tile_info`: Tile scheme, level definitions (backward compatible)
+  - `tile_matrix`: CRS metadata for arbitrary EPSG preview
+    - `crs`: EPSG code (e.g., "EPSG:4490")
+    - `proj4`: Proj4 definition string
+    - `wkt`: WKT definition
+    - `is_geographic`: Boolean flag
+    - `resolutions`: Array of resolutions for each zoom level
+    - `origin`: Tile origin coordinates
+    - `tile_size`: Tile size in pixels
+
 **Readers** (`tilemapservice/readers/`):
 - `bundle_reader.py` - ArcGIS Compact Cache V1 (.bundle+.bundlx) and V2 (single .bundle)
 - `conf_parser.py` - Conf.xml (WKID, TileOrigin, LODs)
@@ -104,8 +116,14 @@ HTTP Request → API Router → TileService → TileLocator → BundlePool → B
 
 - XYZ: Web Mercator (EPSG:3857), Y axis top-down
 - TMS: Y axis inverted (bottom-up)
-- Source Matrix: Native CRS of data source
+- Source Matrix: Native CRS of data source (supports any EPSG code)
 - Geographic Matrix: EPSG:4326 tiles
+
+**Arbitrary EPSG Support**:
+- System supports any EPSG coordinate system (3857, 4326, 4490, etc.)
+- Frontend uses proj4leaflet for non-standard CRS rendering
+- Preview map automatically detects proj4 definition availability
+- WMTS native mode supports arbitrary EPSG through proj4leaflet
 
 ### Performance Optimizations
 
@@ -159,7 +177,7 @@ sources:
     description: "My tile data"
     # Optional overrides:
     # spatial_ref:
-    #   wkid: 4326
+    #   wkid: 4326          # Supports any EPSG code (3857, 4326, 4490, etc.)
     # tile_origin:
     #   x: -180.0
     #   y: 90.0
@@ -189,3 +207,7 @@ Priority: `_alllayers/Lxx/` > `Lxx/`. Missing metadata uses `defaults` config.
 - BundlePool requires per-reader locks for thread-safe file operations (see `bundle_pool.py`)
 - Graceful shutdown timeout prevents Ctrl+C hangs from long tile requests
 - Build uses **onedir mode** to avoid `base_library.zip` errors on Linux
+- Frontend includes proj4js 2.9.2 and proj4leaflet 1.0.2 for arbitrary EPSG support
+- Preview map uses proj4leaflet for non-standard EPSG codes (e.g., EPSG:4490)
+- Empty level directories (without .bundle files) are excluded from available levels
+- Out-of-range zoom requests return 404 across all matrix modes (resolution ratio >1.5x threshold)
