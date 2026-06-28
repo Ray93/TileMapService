@@ -1,4 +1,5 @@
 """Bundle file handle connection pool with LRU eviction."""
+from collections import OrderedDict
 from contextlib import contextmanager
 from pathlib import Path
 from threading import Lock
@@ -17,13 +18,16 @@ class BundlePool:
     by get() increments its refcount, and must be released via release() or
     the acquire() context manager to decrement it. LRU eviction skips readers
     with refcount > 0.
+
+    LRU ordering is maintained by the insertion order of the ``_pool``
+    OrderedDict (oldest first), so hit-reordering and eviction-candidate
+    scanning avoid the O(n) list scans of a separate LRU list.
     """
 
     def __init__(self, max_size: int = 50):
-        self._pool: dict[Path, BundleReader] = {}
+        self._pool: "OrderedDict[Path, BundleReader]" = OrderedDict()
         self._reader_locks: dict[Path, Lock] = {}  # Per-reader locks
         self._refcounts: dict[Path, int] = {}  # Reference counts
-        self._lru: list[Path] = []
         self._lock = Lock()  # Pool management lock
         self._max_size = max_size
         self._stats = {'hits': 0, 'misses': 0, 'evictions': 0}
@@ -41,25 +45,22 @@ class BundlePool:
         with self._lock:
             if bundle_path in self._pool:
                 self._stats['hits'] += 1
-                self._lru.remove(bundle_path)
-                self._lru.append(bundle_path)
+                self._pool.move_to_end(bundle_path)  # Mark as most-recently-used
                 self._refcounts[bundle_path] += 1
                 return self._pool[bundle_path], self._reader_locks[bundle_path]
 
             self._stats['misses'] += 1
             reader = BundleReader(bundle_path)
             reader_lock = Lock()
-            self._pool[bundle_path] = reader
+            self._pool[bundle_path] = reader  # Appended as most-recently-used
             self._reader_locks[bundle_path] = reader_lock
             self._refcounts[bundle_path] = 1  # Initial reference
-            self._lru.append(bundle_path)
 
-            # Evict LRU readers that are not in use (refcount == 0)
+            # Evict least-recently-used readers that are not in use (refcount == 0)
             while len(self._pool) > self._max_size:
                 evicted = False
-                for evict_path in self._lru:
+                for evict_path in self._pool:  # Oldest first
                     if self._refcounts[evict_path] == 0:
-                        self._lru.remove(evict_path)
                         self._pool[evict_path].close()
                         del self._pool[evict_path]
                         del self._reader_locks[evict_path]
@@ -105,7 +106,6 @@ class BundlePool:
             self._pool.clear()
             self._reader_locks.clear()
             self._refcounts.clear()
-            self._lru.clear()
 
     def get_stats(self) -> dict:
         """Get pool statistics."""
